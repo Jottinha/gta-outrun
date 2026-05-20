@@ -1,13 +1,27 @@
 -- ============================================================
---  OUTRUN — Configuração Central
---  Carregado em: client + server (shared_script)
+--  OUTRUN — Configuração central
+--  Carregado em client + server (shared_script)
+--  Convenções:
+--   * Tempos em milissegundos
+--   * Distâncias em metros
+--   * Velocidades em m/s (nativas do FiveM)
 -- ============================================================
 
 Config = {}
 
 
 -- ============================================================
--- SEÇÃO 1: Config.Race — Regras de Corrida
+-- 1) Config.Debug
+-- ============================================================
+
+Config.Debug = {
+    ENABLED    = true,
+    LOG_PREFIX = "[OUTRUN]",
+}
+
+
+-- ============================================================
+-- 2) Config.Race — Regras gerais da corrida
 -- ============================================================
 
 Config.Race = {
@@ -25,7 +39,7 @@ Config.Race = {
 
 
 -- ============================================================
--- SEÇÃO 2: Config.Scoring — Pontuação por Posição
+-- 3) Config.Scoring — Pontuação por posição final
 -- ============================================================
 
 Config.Scoring = {
@@ -36,9 +50,11 @@ Config.Scoring = {
     [5] = 2,
 }
 
+Config.DefaultPointTarget = 100
+
 
 -- ============================================================
--- SEÇÃO 3: Config.BonusRound — Rodada Bônus (Polícia)
+-- 4) Config.BonusRound — Rodada Bônus (Polícia)
 -- ============================================================
 
 Config.BonusRound = {
@@ -49,31 +65,42 @@ Config.BonusRound = {
 
 
 -- ============================================================
--- SEÇÃO 4: Config.AI — Controle de NPCs
+-- 5) Config.AI — Limiares globais (cada Strategy pode override)
 -- ============================================================
 
 Config.AI = {
-    EVADE_DRIVING_STYLE           = 2883621,
-    CHASE_DRIVING_STYLE           = 1074528293,
-    RECOVERY_DRIVING_STYLE        = 786468,
-    EVADE_SPEED                   = 80.0,
-    RECOVERY_SPEED                = 12.0,
-    EVADE_FORWARD_DISTANCE        = 1500.0,
-    EVADE_PRESSURE_DISTANCE       = 120.0,
-    EVADE_ROLE_BUCKET_SIZE        = 75.0,
+    -- Driving styles (fallback se Strategy não definir)
+    EVADE_DRIVING_STYLE        = 2883621,
+    CHASE_DRIVING_STYLE        = 1074528293,
+    RECOVERY_DRIVING_STYLE     = 786468,
+
+    -- Velocidades fallback
+    EVADE_SPEED                = 80.0,
+    RECOVERY_SPEED             = 12.0,
+
+    -- Alvo de fuga
+    EVADE_FORWARD_DISTANCE     = 1500.0,
+    EVADE_PRESSURE_DISTANCE    = 120.0,
+    EVADE_ROLE_BUCKET_SIZE     = 75.0,
+
+    -- Ultrapassagem (CHASE → CHASER_CLOSE)
     CHASE_CLOSE_DISTANCE       = 10.0,
     CHASE_CLOSE_AHEAD_DISTANCE = 30.0,
     CHASE_CLOSE_UPDATE_MS      = 500,
-    STUCK_SPEED_THRESHOLD               = 2.0,
-    STUCK_TIME_THRESHOLD_MS       = 3000,
-    STUCK_WARMUP_MS               = 5000,
-    RECOVERY_NODE_RADIUS          = 10.0,
-    DRIVE_UPDATE_INTERVAL         = 250,
+
+    -- Anti-stuck
+    STUCK_SPEED_THRESHOLD      = 2.0,
+    STUCK_TIME_THRESHOLD_MS    = 3000,
+    STUCK_WARMUP_MS            = 5000,
+    RECOVERY_NODE_RADIUS       = 10.0,
+
+    -- Loop principal da IA
+    DRIVE_UPDATE_INTERVAL      = 250,
 }
 
 
 -- ============================================================
--- SEÇÃO 5: Config.HUD — Interface Visual
+-- 6) Config.HUD — Interface
 -- ============================================================
 
 Config.HUD = {
@@ -86,7 +113,7 @@ Config.HUD = {
 
 
 -- ============================================================
--- SEÇÃO 6: Config.States — Máquinas de Estado
+-- 7) Config.States — Máquinas de estado
 -- ============================================================
 
 Config.States = {
@@ -111,43 +138,71 @@ Config.States = {
 
 
 -- ============================================================
--- SEÇÃO 7: Config.Events — Nomes dos Eventos de Rede
+-- 8) Config.Events — Nomes de eventos de rede
+--    Toda comunicação client↔server passa por aqui.
 -- ============================================================
 
 Config.Events = {
     Server = {
         CREATE_LOBBY        = "outrun:server:CreateLobby",
-        JOIN_LOBBY          = "outrun:server:JoinLobby",
+        REQUEST_LOBBY_STATE = "outrun:server:RequestLobbyState",
+        ADD_NPC             = "outrun:server:AddNPC",
+        SET_CAR             = "outrun:server:SetCar",
         TOGGLE_READY        = "outrun:server:ToggleReady",
         START_RACE          = "outrun:server:StartRace",
         UPDATE_LEADER       = "outrun:server:UpdateLeader",
         ROUND_END           = "outrun:server:RoundEnd",
         RACE_STARTED        = "outrun:server:RaceStarted",
-        REQUEST_LOBBY_STATE = "outrun:server:RequestLobbyState",
     },
 
     Client = {
-        SPAWN_VEHICLES    = "outrun:client:SpawnVehicles",
-        PLAYER_ELIMINATED = "outrun:client:PlayerEliminated",
-        NO_ACTIVE_LOBBY   = "outrun:client:NoActiveLobby",
+        LOBBY_CREATED      = "outrun:client:LobbyCreated",
+        LOBBY_UPDATED      = "outrun:client:LobbyUpdated",
+        NO_ACTIVE_LOBBY    = "outrun:client:NoActiveLobby",
+        FORCE_LOBBY_CLOSE  = "outrun:client:ForceLobbyClose",
+        NOTIFY             = "outrun:client:Notify",
+        SPAWN_VEHICLES     = "outrun:client:SpawnVehicles",
+        PLAYER_ELIMINATED  = "outrun:client:PlayerEliminated",
+        BE_SPECTATOR       = "outrun:client:BeSpectator",
+        LEADER_CHANGED     = "outrun:client:LeaderChanged",
+        CLEAR_WANTED       = "outrun:client:ClearWanted",
+        ROUND_RESULT       = "outrun:client:RoundResult",
+        SHOW_END_SCREEN    = "outrun:client:ShowEndScreen",
     },
 }
 
 
 -- ============================================================
--- SEÇÃO 8: Config.SpawnNodes — Pontos de spawn dinâmico
+-- 9) Config.Vehicles — Modelos selecionáveis no lobby
 -- ============================================================
 
-Config.SpawnNodes = {
-    vector3(  -1729.55,  -2884.01,  13.94),
+Config.Vehicles = {
+    DEFAULT = "sultan",
+    SELECTABLE = {
+        "sultan", "elegy2", "adder", "t20", "zentorno",
+        "kuruma", "comet2", "banshee",
+    },
 }
 
 
 -- ============================================================
--- SEÇÃO 9: Config.Debug — Desenvolvimento
+-- 10) Config.PedModels — Modelos de peds usados como motoristas NPC
 -- ============================================================
 
-Config.Debug = {
-    ENABLED    = true,
-    LOG_PREFIX = "[OUTRUN]",
+Config.PedModels = {
+    "a_m_y_musclbeac_01",
+    "a_m_m_business_01",
+    "a_m_y_skater_01",
+    "a_m_y_hipster_01",
+    "a_m_y_genstreet_01",
+    "a_m_y_eastsa_01",
+}
+
+
+-- ============================================================
+-- 11) Config.SpawnNodes — Pontos curados para largada
+-- ============================================================
+
+Config.SpawnNodes = {
+    vector3(-1729.55, -2884.01, 13.94),
 }

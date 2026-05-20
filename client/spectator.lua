@@ -1,5 +1,8 @@
 -- ============================================================
---  OUTRUN — Spectator
+--  OUTRUN — Client: Spectator
+--
+--  Câmera orbital ao redor do líder, ativada quando o jogador
+--  é eliminado. Recebe BE_SPECTATOR do server.
 -- ============================================================
 
 Spectator = {}
@@ -10,6 +13,7 @@ local orbitAngle    = 0.0
 local orbitDist     = 6.0
 local orbitHeight   = 2.5
 local active        = false
+
 
 function Spectator.Start(leaderVeh)
     if active then Spectator.Stop() end
@@ -32,7 +36,7 @@ function Spectator.Start(leaderVeh)
             local rightX = GetControlNormal(0, 220)
             orbitAngle = orbitAngle + rightX * 2.0
 
-            local rad  = math.rad(orbitAngle)
+            local rad = math.rad(orbitAngle)
             SetCamCoord(spectatorCam,
                 center.x + math.cos(rad) * orbitDist,
                 center.y + math.sin(rad) * orbitDist,
@@ -61,7 +65,8 @@ function Spectator.SetTarget(veh)
     targetVehicle = veh
 end
 
-RegisterNetEvent('outrun:client:BeSpectator', function(leaderId)
+
+RegisterNetEvent(Config.Events.Client.BE_SPECTATOR, function(leaderId)
     RaceState.eliminated = true
 
     local leaderVeh = RaceState.leaderVeh

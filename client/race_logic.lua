@@ -162,7 +162,7 @@ end
 
 function RaceLogic.StartLoop(getParticipants, getLeaderVeh, callback)
     Citizen.CreateThread(function()
-        while RaceState and RaceState.active do
+        while RaceState.isActive() do
             local snapshot = RaceLogic.GetRaceSnapshot(getParticipants(), getLeaderVeh())
             if snapshot.leaderVeh and DoesEntityExist(snapshot.leaderVeh) then
                 callback(snapshot)
