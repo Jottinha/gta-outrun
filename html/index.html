@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OUTRUN</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ===================== LOBBY ===================== -->
+<div id="lobby" class="hidden">
+    <div class="lobby-container">
+
+        <aside class="lobby-settings">
+            <h2 class="neon-title">OUTRUN</h2>
+
+            <div class="field-group">
+                <label>Meta de Pontos</label>
+                <div class="btn-row" id="point-targets">
+                    <button class="btn-option active" data-pts="50">50</button>
+                    <button class="btn-option" data-pts="100">100</button>
+                    <button class="btn-option" data-pts="200">200</button>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label>Meu Carro</label>
+                <select id="my-car">
+                    <option value="sultan">Sultan</option>
+                    <option value="elegy2">Elegy RH8</option>
+                    <option value="adder">Adder</option>
+                    <option value="t20">T20</option>
+                    <option value="zentorno">Zentorno</option>
+                    <option value="kuruma">Kuruma</option>
+                    <option value="comet2">Comet</option>
+                    <option value="banshee">Banshee</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Adicionar NPC</label>
+                <div class="npc-row">
+                    <select id="npc-model">
+                        <option value="sultan">Sultan</option>
+                        <option value="elegy2">Elegy RH8</option>
+                        <option value="adder">Adder</option>
+                        <option value="t20">T20</option>
+                        <option value="zentorno">Zentorno</option>
+                    </select>
+                    <select id="npc-personality">
+                        <option value="balanced">Equilibrado</option>
+                        <option value="aggressive">Agressivo</option>
+                        <option value="precise">Preciso</option>
+                    </select>
+                    <button class="btn-add" id="btn-add-npc">+ NPC</button>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label>Tráfego</label>
+                <button class="btn-toggle" id="btn-traffic">ON</button>
+            </div>
+        </aside>
+
+        <main class="lobby-participants">
+            <div id="participant-list"></div>
+        </main>
+
+        <footer class="lobby-footer">
+            <button class="btn-ready" id="btn-ready">PRONTO</button>
+            <button class="btn-start" id="btn-start" disabled>INICIAR CORRIDA</button>
+            <button class="btn-close" id="btn-close">✕</button>
+        </footer>
+
+    </div>
+</div>
+
+<!-- ===================== CONTAGEM ===================== -->
+<div id="countdown" class="hidden">
+    <div class="countdown-number" id="countdown-number">5</div>
+    <div class="countdown-bonus hidden" id="countdown-bonus">⚠ RODADA BÔNUS — POLÍCIA!</div>
+</div>
+
+<!-- ===================== HUD ===================== -->
+<div id="hud" class="hidden">
+    <div class="hud-bar-wrap">
+        <div class="hud-position" id="hud-position">LÍDER</div>
+        <div class="hud-bar-outer">
+            <div class="hud-bar-fill" id="hud-bar-fill"></div>
+        </div>
+        <div class="hud-dist" id="hud-dist">0m / 500m</div>
+    </div>
+</div>
+
+<!-- ===================== ROUND RESULT ===================== -->
+<div id="round-result" class="hidden">
+    <div class="result-box">
+        <h2 class="neon-title">RESULTADO</h2>
+        <div id="result-list"></div>
+        <p class="result-hint">Próxima rodada em breve...</p>
+    </div>
+</div>
+
+<!-- ===================== END SCREEN ===================== -->
+<div id="end-screen" class="hidden">
+    <div class="end-box">
+        <h1 class="neon-title champion-title">CAMPEÃO</h1>
+        <div class="champion-name" id="champion-name">—</div>
+        <div id="final-scores"></div>
+        <button class="btn-close-end" id="btn-close-end">FECHAR</button>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

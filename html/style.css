@@ -1,0 +1,248 @@
+/* ============================================================
+   OUTRUN — Estilo Neon / NFS Underground
+   ============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --neon-green : #00ff88;
+    --neon-red   : #ff2244;
+    --neon-blue  : #00cfff;
+    --panel-bg   : rgba(15, 15, 35, 0.95);
+    --border     : rgba(0, 207, 255, 0.3);
+    --text-main  : #e0e0f0;
+}
+
+body {
+    font-family    : 'Arial', sans-serif;
+    background     : transparent;
+    color          : var(--text-main);
+    user-select    : none;
+    pointer-events : none;
+    overflow       : hidden;
+    width          : 100vw;
+    height         : 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* ============================================================ LOBBY */
+
+#lobby {
+    pointer-events  : all;
+    width           : 100vw;
+    height          : 100vh;
+    display         : flex;
+    align-items     : center;
+    justify-content : center;
+    background      : rgba(0,0,0,0.55);
+}
+
+.lobby-container {
+    width                : 800px;
+    background           : var(--panel-bg);
+    border               : 1px solid var(--border);
+    border-radius        : 12px;
+    box-shadow           : 0 0 40px rgba(0,207,255,0.15);
+    display              : grid;
+    grid-template-rows   : 1fr auto;
+    grid-template-columns: 240px 1fr;
+    grid-template-areas  : "settings participants" "footer footer";
+    overflow             : hidden;
+}
+
+.lobby-settings {
+    grid-area      : settings;
+    padding        : 24px 20px;
+    border-right   : 1px solid var(--border);
+    display        : flex;
+    flex-direction : column;
+    gap            : 20px;
+}
+
+.neon-title {
+    font-size      : 28px;
+    font-weight    : 900;
+    letter-spacing : 6px;
+    color          : var(--neon-green);
+    text-shadow    : 0 0 12px var(--neon-green), 0 0 30px var(--neon-green);
+    text-align     : center;
+}
+
+.field-group { display: flex; flex-direction: column; gap: 8px; }
+.field-group label { font-size: 11px; letter-spacing: 2px; color: var(--neon-blue); text-transform: uppercase; }
+
+.btn-row  { display: flex; gap: 6px; flex-wrap: wrap; }
+.npc-row  { display: flex; flex-direction: column; gap: 6px; }
+
+.btn-option {
+    flex: 1; padding: 7px 4px; background: transparent;
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-main); cursor: pointer; font-size: 13px; transition: all 0.15s;
+}
+.btn-option.active, .btn-option:hover {
+    background: rgba(0,207,255,0.15); border-color: var(--neon-blue); color: var(--neon-blue);
+}
+
+select {
+    width: 100%; background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-main); padding: 7px 8px; font-size: 13px;
+}
+select:focus { outline: none; border-color: var(--neon-blue); }
+
+.btn-add {
+    padding: 7px 12px; background: rgba(0,255,136,0.1);
+    border: 1px solid var(--neon-green); border-radius: 6px;
+    color: var(--neon-green); cursor: pointer; font-size: 13px; transition: all 0.15s;
+}
+.btn-add:hover { background: rgba(0,255,136,0.25); }
+
+.btn-toggle {
+    padding: 7px 20px; background: rgba(0,255,136,0.1);
+    border: 1px solid var(--neon-green); border-radius: 6px;
+    color: var(--neon-green); cursor: pointer; font-size: 13px;
+}
+.btn-toggle.off { background: rgba(255,34,68,0.1); border-color: var(--neon-red); color: var(--neon-red); }
+
+.lobby-participants { grid-area: participants; padding: 24px 20px; overflow-y: auto; max-height: 420px; }
+
+.participant-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.participant-row:last-child { border-bottom: none; }
+.participant-name { flex: 1; font-size: 14px; }
+.participant-car  { font-size: 12px; color: var(--neon-blue); }
+.participant-tag  { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 1px; }
+.participant-ready {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    background: var(--neon-red); box-shadow: 0 0 8px var(--neon-red);
+}
+.participant-ready.ready { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+
+.lobby-footer {
+    grid-area: footer; display: flex; gap: 10px;
+    padding: 16px 20px; border-top: 1px solid var(--border);
+}
+
+.btn-ready {
+    padding: 10px 24px; background: rgba(255,34,68,0.12);
+    border: 1px solid var(--neon-red); border-radius: 8px;
+    color: var(--neon-red); cursor: pointer; font-size: 14px; letter-spacing: 2px; transition: all 0.15s;
+}
+.btn-ready.ready { background: rgba(0,255,136,0.12); border-color: var(--neon-green); color: var(--neon-green); }
+
+.btn-start {
+    flex: 1; padding: 10px; background: rgba(0,255,136,0.15);
+    border: 1px solid var(--neon-green); border-radius: 8px;
+    color: var(--neon-green); cursor: pointer; font-size: 15px;
+    letter-spacing: 3px; font-weight: 700; transition: all 0.15s;
+}
+.btn-start:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-start:not(:disabled):hover { background: rgba(0,255,136,0.35); box-shadow: 0 0 20px rgba(0,255,136,0.4); }
+
+.btn-close {
+    padding: 10px 14px; background: transparent;
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+    color: rgba(255,255,255,0.5); cursor: pointer; font-size: 14px;
+}
+
+/* ============================================================ COUNTDOWN */
+
+#countdown {
+    position: fixed; inset: 0; display: flex;
+    flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+}
+
+.countdown-number {
+    font-size: 180px; font-weight: 900; letter-spacing: -10px;
+    color: var(--neon-green);
+    text-shadow: 0 0 40px var(--neon-green), 0 0 80px var(--neon-green);
+    animation: countPulse 0.8s ease-out;
+}
+
+@keyframes countPulse { from { transform: scale(1.4); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+
+.countdown-bonus {
+    font-size: 20px; letter-spacing: 4px;
+    color: var(--neon-red); text-shadow: 0 0 12px var(--neon-red);
+    animation: blink 0.6s infinite alternate;
+}
+
+@keyframes blink { from { opacity: 1; } to { opacity: 0.3; } }
+
+/* ============================================================ HUD */
+
+#hud { position: fixed; top: 24px; right: 24px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+.hud-bar-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.hud-position { font-size: 11px; letter-spacing: 3px; color: var(--neon-blue); text-shadow: 0 0 8px var(--neon-blue); }
+
+.hud-bar-outer {
+    width: 220px; height: 14px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 7px; overflow: hidden;
+}
+
+.hud-bar-fill {
+    height: 100%; width: 0%; border-radius: 7px;
+    background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green);
+    transition: width 0.08s linear, background 0.3s;
+}
+.hud-bar-fill.chaser  { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
+.hud-bar-fill.danger  { animation: dangerPulse 0.35s infinite alternate; }
+
+@keyframes dangerPulse {
+    from { box-shadow: 0 0 10px var(--neon-red); }
+    to   { box-shadow: 0 0 28px var(--neon-red), 0 0 50px rgba(255,34,68,0.6); }
+}
+
+.hud-dist { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 1px; }
+
+/* ============================================================ ROUND RESULT */
+
+#round-result {
+    position: fixed; inset: 0; display: flex;
+    align-items: center; justify-content: center; background: rgba(0,0,0,0.6);
+}
+
+.result-box {
+    background: var(--panel-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 32px 48px; min-width: 320px; text-align: center;
+    display: flex; flex-direction: column; gap: 16px;
+}
+
+.result-hint { font-size: 12px; color: rgba(255,255,255,0.35); letter-spacing: 2px; }
+
+.result-row {
+    display: flex; justify-content: space-between; font-size: 16px;
+    padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.result-row:last-child { border-bottom: none; }
+.result-pos { color: var(--neon-blue); font-weight: 700; }
+
+/* ============================================================ END SCREEN */
+
+#end-screen {
+    position: fixed; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.75); pointer-events: all;
+}
+
+.end-box {
+    background: var(--panel-bg); border: 1px solid var(--neon-green); border-radius: 16px;
+    padding: 40px 60px; text-align: center;
+    display: flex; flex-direction: column; gap: 20px;
+    box-shadow: 0 0 60px rgba(0,255,136,0.2);
+}
+
+.champion-title { font-size: 36px; }
+.champion-name { font-size: 48px; font-weight: 900; color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green); letter-spacing: 4px; }
+
+.btn-close-end {
+    padding: 12px 32px; background: rgba(0,255,136,0.1);
+    border: 1px solid var(--neon-green); border-radius: 8px;
+    color: var(--neon-green); cursor: pointer; font-size: 15px; letter-spacing: 3px; align-self: center;
+}
+.btn-close-end:hover { background: rgba(0,255,136,0.3); }
