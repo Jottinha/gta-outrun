@@ -1,6 +1,6 @@
 'use strict';
 
-const State = { selectedPts: 100, isReady: false, trafficOn: true, isLeader: false };
+const State = { selectedPts: 50, isReady: false, trafficOn: true, isLeader: false };
 const $    = (id) => document.getElementById(id);
 const show = (id) => $(id).classList.remove('hidden');
 const hide = (id) => $(id).classList.add('hidden');
@@ -127,7 +127,7 @@ function playLeaderSwoosh() {
 // ============================================================ Countdown
 
 function showCountdown({ isBonusRound }) {
-    hide('lobby'); show('countdown');
+    hide('lobby'); hide('round-result'); show('countdown');
     $('countdown-bonus').classList.toggle('hidden', !isBonusRound);
 }
 
@@ -146,35 +146,40 @@ function countdownGo() {
 
 // ============================================================ Results
 
-function showRoundResult({ results, scores }) {
+function showRoundResult({ results, scores, names }) {
+    const getName = (id) => (names && names[id]) || id;
     hide('hud'); show('round-result');
     const labels = ['1º','2º','3º','4º','5º','6º'];
     $('result-list').innerHTML = (results||[]).map((r,i) => `
         <div class="result-row">
             <span class="result-pos">${labels[i]||i+1+'º'}</span>
-            <span>${r.id}</span>
+            <span>${getName(r.id)}</span>
             <span>${(scores&&scores[r.id])||0} pts</span>
         </div>`).join('');
 
-    setTimeout(() => {
-        hide('round-result'); show('lobby');
-        State.isReady = false;
-        $('btn-ready').textContent = 'PRONTO';
-        $('btn-ready').classList.remove('ready');
-    }, 10000);
+    setTimeout(() => hide('round-result'), 10000);
 }
 
-function showEndScreen({ champion, scores }) {
+function showEndScreen({ champion, scores, names }) {
+    const getName = (id) => (names && names[id]) || id;
     hide('hud'); hide('round-result'); show('end-screen');
-    $('champion-name').textContent = champion;
+
+    $('champion-name').textContent = getName(champion);
+
     const sorted = Object.entries(scores||{}).sort((a,b) => b[1]-a[1]);
-    $('final-scores').innerHTML = sorted.map(([id,pts],i) => `
-        <div class="result-row">
-            <span class="result-pos">${i+1}º</span>
-            <span>${id}</span>
-            <span>${pts} pts</span>
-        </div>`).join('');
-    $('btn-close-end').addEventListener('click', () => { hide('end-screen'); postNUI('closeLobby'); }, { once: true });
+    $('final-scores').innerHTML = `<div class="end-scores-list">` +
+        sorted.map(([id,pts],i) => `
+        <div class="end-row ${i===0?'first-place':''}">
+            <span class="end-pos">${i+1}º</span>
+            <span class="end-name">${getName(id)}</span>
+            <span class="end-pts">${pts} pts</span>
+        </div>`).join('') +
+    `</div>`;
+
+    $('btn-close-end').addEventListener('click', () => {
+        hide('end-screen');
+        postNUI('closeLobby');
+    }, { once: true });
 }
 
 // ============================================================ NUI Handler

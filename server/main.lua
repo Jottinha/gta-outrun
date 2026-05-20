@@ -25,6 +25,18 @@ local function getRoomByPlayer(src)
     end
 end
 
+local function buildNames(room)
+    local names = {}
+    for _, p in ipairs(room.participants) do
+        if p.isNPC then
+            names[p.source] = "Bot (" .. (p.model or "NPC") .. ")"
+        else
+            names[p.source] = GetPlayerName(p.source) or ("Jogador " .. tostring(p.source))
+        end
+    end
+    return names
+end
+
 local function getChampionshipLeaderSrc(room)
     local topScore = -1
     local topSrc   = nil
@@ -144,20 +156,11 @@ RegisterNetEvent(Config.Events.Server.TOGGLE_READY, function()
 end)
 
 -- ============================================================
--- Iniciar Corrida
+-- Iniciar Rodada (usado pelo START_RACE e pelo auto-restart)
 -- ============================================================
 
-RegisterNetEvent(Config.Events.Server.START_RACE, function()
-    local src = source
-    local roomId, room = getRoomByHost(src)
-    if not room or room.state ~= Config.States.Room.LOBBY then return end
-
-    for _, p in ipairs(room.participants) do
-        if not p.isNPC and not p.ready then
-            TriggerClientEvent('outrun:client:Notify', src, "Nem todos os jogadores estão prontos.")
-            return
-        end
-    end
+local function startRound(roomId, room)
+    if not room or not Rooms[roomId] then return end
 
     room.state    = Config.States.Room.SPAWN_GRID
     room.roundNum = room.roundNum + 1
@@ -181,7 +184,7 @@ RegisterNetEvent(Config.Events.Server.START_RACE, function()
         end
     end
 
-    TriggerClientEvent(Config.Events.Client.SPAWN_VEHICLES, src, {
+    TriggerClientEvent(Config.Events.Client.SPAWN_VEHICLES, room.host, {
         roomId       = roomId,
         participants = room.participants,
         spawnBase    = spawnPoint,
@@ -191,6 +194,21 @@ RegisterNetEvent(Config.Events.Server.START_RACE, function()
 
     log("Sala " .. roomId .. " iniciando rodada " .. room.roundNum ..
         (bonusActive and " [BÔNUS]" or ""))
+end
+
+RegisterNetEvent(Config.Events.Server.START_RACE, function()
+    local src = source
+    local roomId, room = getRoomByHost(src)
+    if not room or room.state ~= Config.States.Room.LOBBY then return end
+
+    for _, p in ipairs(room.participants) do
+        if not p.isNPC and not p.ready then
+            TriggerClientEvent('outrun:client:Notify', src, "Nem todos os jogadores estão prontos.")
+            return
+        end
+    end
+
+    startRound(roomId, room)
 end)
 
 -- ============================================================
@@ -254,23 +272,30 @@ RegisterNetEvent(Config.Events.Server.ROUND_END, function(results)
         end
     end
 
+    local names = buildNames(room)
+
     if champion then
         room.state = Config.States.Room.END_SCREEN
         for _, p in ipairs(room.participants) do
             if not p.isNPC then
-                TriggerClientEvent('outrun:client:ShowEndScreen', p.source, champion, room.scores)
+                TriggerClientEvent('outrun:client:ShowEndScreen', p.source, champion, room.scores, names)
             end
         end
         Rooms[roomId] = nil
-        log("Campeão: " .. tostring(champion))
+        log("Campeão: " .. tostring(champion) .. " (" .. (names[champion] or "?") .. ")")
     else
-        room.state = Config.States.Room.LOBBY
+        room.state = Config.States.Room.ROUND_RESULT
         for _, p in ipairs(room.participants) do
             if not p.isNPC then
-                p.ready = false
-                TriggerClientEvent('outrun:client:RoundResult', p.source, results, room.scores)
+                TriggerClientEvent('outrun:client:RoundResult', p.source, results, room.scores, names)
             end
         end
+        -- Reinicia automaticamente após o placar ser exibido
+        local capturedId = roomId
+        Citizen.SetTimeout(10000, function()
+            startRound(capturedId, Rooms[capturedId])
+        end)
+        log("Sala " .. roomId .. " aguardando 10s para próxima rodada")
     end
 end)
 

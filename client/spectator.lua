@@ -29,7 +29,7 @@ function Spectator.Start(leaderVeh)
             if not DoesEntityExist(targetVehicle) then break end
 
             local center = GetEntityCoords(targetVehicle)
-            local _, rightX = GetControlNormal(0, 220)
+            local rightX = GetControlNormal(0, 220)
             orbitAngle = orbitAngle + rightX * 2.0
 
             local rad  = math.rad(orbitAngle)

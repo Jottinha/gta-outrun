@@ -61,12 +61,14 @@ Config.AI = {
     EVADE_FORWARD_DISTANCE        = 1500.0,
     EVADE_PRESSURE_DISTANCE       = 120.0,
     EVADE_ROLE_BUCKET_SIZE        = 75.0,
-    CHASE_ENGINE_POWER_MULTIPLIER = 1.5,
-    STUCK_SPEED_THRESHOLD         = 2.0,
+    CHASE_CLOSE_DISTANCE       = 10.0,
+    CHASE_CLOSE_AHEAD_DISTANCE = 30.0,
+    CHASE_CLOSE_UPDATE_MS      = 500,
+    STUCK_SPEED_THRESHOLD               = 2.0,
     STUCK_TIME_THRESHOLD_MS       = 3000,
     STUCK_WARMUP_MS               = 5000,
     RECOVERY_NODE_RADIUS          = 10.0,
-    DRIVE_UPDATE_INTERVAL         = 1000,
+    DRIVE_UPDATE_INTERVAL         = 250,
 }
 
 
@@ -98,11 +100,12 @@ Config.States = {
         END_SCREEN         = "END_SCREEN",
     },
     AI = {
-        GRID       = "GRID",
-        CHASE      = "CHASE",
-        EVADE      = "EVADE",
-        RECOVERY   = "RECOVERY",
-        ELIMINATED = "ELIMINATED",
+        GRID         = "GRID",
+        CHASE        = "CHASE",
+        CHASER_CLOSE = "CHASER_CLOSE",
+        EVADE        = "EVADE",
+        RECOVERY     = "RECOVERY",
+        ELIMINATED   = "ELIMINATED",
     },
 }
 
@@ -145,6 +148,6 @@ Config.SpawnNodes = {
 -- ============================================================
 
 Config.Debug = {
-    ENABLED    = false,
+    ENABLED    = true,
     LOG_PREFIX = "[OUTRUN]",
 }

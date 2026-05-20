@@ -431,9 +431,8 @@ end
 function endRound(standings)
     RaceState.active = false
     local results = buildRoundResults(standings)
-
+    -- O server envia RoundResult para todos os participantes com os pontos completos
     TriggerServerEvent(Config.Events.Server.ROUND_END, results)
-    sendNUI('showRoundResult', { results = results })
 end
 
 -- ============================================================
@@ -475,15 +474,36 @@ RegisterNetEvent('outrun:client:ClearWanted', function()
     SetPoliceIgnorePlayer(PlayerId(), false)
 end)
 
-RegisterNetEvent('outrun:client:RoundResult', function(results, scores)
-    sendNUI('roundResult', { results = results, scores = scores })
+RegisterNetEvent('outrun:client:RoundResult', function(results, scores, names)
+    sendNUI('roundResult', { results = results, scores = scores, names = names })
 end)
 
-RegisterNetEvent('outrun:client:ShowEndScreen', function(champion, scores)
+RegisterNetEvent('outrun:client:ShowEndScreen', function(champion, scores, names)
     hasActiveLobby   = false
     RaceState.active = false
+    trafficEnabled   = true
+    roundEnded       = true
+
+    -- Para os loops e limpa entidades da sessão encerrada
+    AIController.UnregisterAll()
+    Spectator.Stop()
+
+    Citizen.CreateThread(function()
+        Citizen.Wait(300) -- aguarda os loops pararem no próximo ciclo
+        for _, veh in ipairs(spawnedVehicles) do
+            if DoesEntityExist(veh) then DeleteVehicle(veh) end
+        end
+        spawnedVehicles = {}
+    end)
+
+    RaceState = {
+        active = false, isHost = false, roomId = nil,
+        leaderId = nil, leaderVeh = nil, runnerUpId = nil, runnerUpVeh = nil, myVehicle = nil,
+        participants = {}, eliminationOrder = {}, eliminated = false,
+    }
+
     SetNuiFocus(true, true)
-    sendNUI('endScreen', { champion = champion, scores = scores })
+    sendNUI('endScreen', { champion = champion, scores = scores, names = names })
 end)
 
 RegisterNetEvent('outrun:client:Notify', function(msg)
