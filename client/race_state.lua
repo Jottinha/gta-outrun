@@ -8,6 +8,7 @@
 RaceState = {
     active           = false,
     isHost           = false,
+    isMultiplayer    = false,
     roomId           = nil,
     leaderId         = nil,
     leaderVeh        = nil,
@@ -30,6 +31,7 @@ end
 function RaceState.reset()
     RaceState.active           = false
     RaceState.isHost           = false
+    RaceState.isMultiplayer    = false
     RaceState.roomId           = nil
     RaceState.leaderId         = nil
     RaceState.leaderVeh        = nil

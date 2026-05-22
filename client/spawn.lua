@@ -91,22 +91,72 @@ end
 
 
 -- ============================================================
--- Spawn.run(payload) — chamado pelo RaceOrchestrator
+-- Spawn.runMyVehicle(payload) — usado no modo multiplayer
+--
+-- Cada player spawna apenas o seu próprio veículo.
+-- payload = {
+--     roomId, spawnBase, model, gridIndex, totalCount,
+--     bonusRound, scores, isHost
+-- }
+--
+-- Retorna (vehicle, netId).
+-- ============================================================
+
+function Spawn.runMyVehicle(payload)
+    -- Limpar veículo anterior se existir
+    if RaceState.myVehicle and DoesEntityExist(RaceState.myVehicle) then
+        DeleteVehicle(RaceState.myVehicle)
+        RaceState.myVehicle = nil
+    end
+
+    RaceState.isHost        = payload.isHost == true
+    RaceState.isMultiplayer = true
+    RaceState.roomId        = payload.roomId
+
+    local base              = payload.spawnBase
+    local nodePos, nodeHead = resolveSpawnNode(base)
+    local fwdX, fwdY, rgtX, rgtY = Grid.basisFromHeading(nodeHead)
+
+    local offset = Grid.computeOffset(payload.gridIndex, payload.totalCount)
+    local spawnX = nodePos.x + (fwdX * offset.longitudinal) + (rgtX * offset.lateral)
+    local spawnY = nodePos.y + (fwdY * offset.longitudinal) + (rgtY * offset.lateral)
+    local spawnZ = nodePos.z + 0.5
+
+    local veh = createVehicleAt(payload.model or Config.Vehicles.DEFAULT,
+        spawnX, spawnY, spawnZ, nodeHead)
+
+    -- Registrar como entidade de rede para que outros players vejam o veículo
+    SetEntityAsMissionEntity(veh, true, true)
+    NetworkRegisterEntityAsNetworked(veh)
+    SetNetworkIdCanMigrate(VehToNet(veh), false)
+
+    TaskWarpPedIntoVehicle(PlayerPedId(), veh, -1)
+    RaceState.myVehicle = veh
+
+    local netId = VehToNet(veh)
+    Logger.debug("SPAWN", ("MP: veículo próprio spawnado, netId=%d"):format(netId))
+    return veh, netId
+end
+
+
+-- ============================================================
+-- Spawn.run(payload) — usado no modo solo (comportamento original)
 --
 -- payload = {
 --     roomId, participants, spawnBase, bonusRound, scores
 -- }
 --
--- Retorna { vehicles = {...} } para o orquestrador limpar depois.
+-- Retorna lista de vehicles para o orquestrador limpar depois.
 -- ============================================================
 
 function Spawn.run(payload)
     local base  = payload.spawnBase
     local parts = payload.participants
 
-    RaceState.isHost       = true
-    RaceState.roomId       = payload.roomId
-    RaceState.participants = {}
+    RaceState.isHost        = true
+    RaceState.isMultiplayer = false
+    RaceState.roomId        = payload.roomId
+    RaceState.participants  = {}
 
     local nodePos, nodeHead = resolveSpawnNode(base)
     local forwardX, forwardY, rightX, rightY = Grid.basisFromHeading(nodeHead)

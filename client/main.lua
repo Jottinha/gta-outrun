@@ -16,13 +16,24 @@ local function notify(msg)
     TriggerEvent('QBCore:Notify', msg, 'primary')
 end
 
+-- Resolve o vehicle handle de um participante, com fallback para netId em MP.
+local function resolveParticipantVeh(p)
+    if p.vehicle and DoesEntityExist(p.vehicle) then return p.vehicle end
+    if p.netId then
+        local v = NetToVeh(p.netId)
+        if DoesEntityExist(v) then
+            p.vehicle = v
+            return v
+        end
+    end
+    return nil
+end
+
 
 -- ============================================================
 -- Lobby: ações disparadas pela UI
--- (Lobby foi pré-declarado em nui_bridge.lua)
 -- ============================================================
 
--- "Criar Corrida" no main-menu: cria a sala no server.
 function Lobby.create(data)
     TriggerServerEvent(SE.CREATE_LOBBY, tonumber(data.pointTarget) or Config.DefaultPointTarget)
 end
@@ -45,8 +56,6 @@ function Lobby.startRace()
     TriggerServerEvent(SE.START_RACE)
 end
 
--- "Voltar" no lobby: cancela a sala no server (se host) ou sai (se participante)
--- e volta para o main-menu. NÃO fecha a NUI.
 function Lobby.leave()
     if hasActiveLobby then
         TriggerServerEvent(SE.LEAVE_LOBBY)
@@ -54,7 +63,6 @@ function Lobby.leave()
     end
 end
 
--- "X" / FECHAR: encerra a NUI inteiramente.
 function Lobby.closeMenu()
     if hasActiveLobby then
         TriggerServerEvent(SE.LEAVE_LOBBY)
@@ -68,19 +76,13 @@ function Lobby.setTraffic(data)
     trafficEnabled = data.on == true
 end
 
--- "Entrar em Corrida": pede a lista de salas ao server. Resposta vem em
--- CE.ROOMS_LIST e é repassada à NUI como `roomsList`.
 function Lobby.refreshRooms()
     TriggerServerEvent(SE.REQUEST_ROOMS_LIST)
 end
 
--- Tentativa de entrar em sala alheia. Hoje o server ainda não tem a lógica
--- de "addParticipant", então registramos a intenção e avisamos o jogador.
--- Quando o multiplayer entrar, basta substituir esta função por um
--- TriggerServerEvent específico (ex.: SE.JOIN_ROOM).
+-- Entrar em sala alheia (multiplayer real)
 function Lobby.joinRoom(data)
-    notify(("Multiplayer ainda não implementado — sala #%s será habilitada quando o recurso entrar."):format(
-        tostring(data.roomId or "?")))
+    TriggerServerEvent(SE.JOIN_ROOM, tonumber(data.roomId))
 end
 
 
@@ -91,8 +93,6 @@ end
 RegisterCommand('outrun', function()
     Nui.setFocus(true)
     if hasActiveLobby then
-        -- Já participa de uma sala: tenta restaurar o estado pelo server.
-        -- Server responde com LOBBY_CREATED (mostra lobby) ou NO_ACTIVE_LOBBY (volta main).
         TriggerServerEvent(SE.REQUEST_LOBBY_STATE)
     else
         Nui.send('openMenu', {})
@@ -101,7 +101,7 @@ end, false)
 
 
 -- ============================================================
--- Thread de tráfego (suprime tráfego/peds quando desativado)
+-- Thread de tráfego
 -- ============================================================
 
 Citizen.CreateThread(function()
@@ -122,11 +122,13 @@ end)
 -- Handlers de eventos do server
 -- ============================================================
 
-RegisterNetEvent(CE.LOBBY_CREATED, function(roomId, room)
+RegisterNetEvent(CE.LOBBY_CREATED, function(roomId, room, isHostOverride)
     hasActiveLobby = true
     RaceState.roomId = roomId
+    local myId   = GetPlayerServerId(PlayerId())
+    local isHost = (isHostOverride ~= nil) and isHostOverride or (room.host == myId)
     Nui.setFocus(true)
-    Nui.send('lobbyCreated', { roomId = roomId, room = room })
+    Nui.send('lobbyCreated', { roomId = roomId, room = room, isHost = isHost })
 end)
 
 RegisterNetEvent(CE.NO_ACTIVE_LOBBY, function()
@@ -136,7 +138,9 @@ RegisterNetEvent(CE.NO_ACTIVE_LOBBY, function()
 end)
 
 RegisterNetEvent(CE.LOBBY_UPDATED, function(room)
-    Nui.send('lobbyUpdated', { room = room })
+    local myId   = GetPlayerServerId(PlayerId())
+    local isHost = (room.host == myId)
+    Nui.send('lobbyUpdated', { room = room, isHost = isHost })
 end)
 
 RegisterNetEvent(CE.ROOMS_LIST, function(rooms)
@@ -145,23 +149,26 @@ end)
 
 RegisterNetEvent(CE.LEADER_CHANGED, function(leaderId)
     RaceState.leaderId = leaderId
+
+    -- Resolver vehicle handle (local ou via netId em MP)
+    local leaderVeh = nil
     for _, p in ipairs(RaceState.participants) do
-        if p.id == leaderId then
-            RaceState.leaderVeh = p.vehicle
+        if tostring(p.id) == tostring(leaderId) then
+            leaderVeh = resolveParticipantVeh(p)
             break
         end
     end
-    if RaceState.eliminated and RaceState.leaderVeh then
-        Spectator.SetTarget(RaceState.leaderVeh)
+    RaceState.leaderVeh = leaderVeh
+
+    if RaceState.eliminated and leaderVeh then
+        Spectator.SetTarget(leaderVeh)
     end
 
-    -- Marca o líder no minimap dos OUTROS jogadores (com rota GPS).
-    -- Se o player local É o líder, limpa o blip (não faz sentido marcar a si mesmo).
     local myId = GetPlayerServerId(PlayerId())
     if leaderId == myId then
         LeaderBlip.clear()
     else
-        LeaderBlip.setTarget(RaceState.leaderVeh)
+        LeaderBlip.setTarget(leaderVeh)
     end
 end)
 
@@ -199,10 +206,50 @@ RegisterNetEvent(CE.FORCE_LOBBY_CLOSE, function()
     notify("A sala foi encerrada.")
 end)
 
+-- Solo: host recebe lista completa de participants para spawnar tudo
 RegisterNetEvent(CE.SPAWN_VEHICLES, function(payload)
     Nui.setFocus(false)
     Nui.send('hideMenus', {})
     RaceOrchestrator.beginRound(payload)
+end)
+
+-- Multiplayer: cada player spawna só o seu veículo
+RegisterNetEvent(CE.SPAWN_MY_VEHICLE, function(payload)
+    hasActiveLobby = true
+    Nui.setFocus(false)
+    Nui.send('hideMenus', {})
+    RaceOrchestrator.beginRoundMP(payload)
+end)
+
+-- Multiplayer: todos spawnaram — recebe mapa de netIds para montar participants
+RegisterNetEvent(CE.ALL_SPAWNED, function(netIdMap)
+    RaceOrchestrator.onAllSpawned(netIdMap)
+end)
+
+-- Multiplayer: tick do countdown server-side
+RegisterNetEvent(CE.COUNTDOWN_TICK, function(count)
+    Nui.send('countdownTick', { count = count })
+end)
+
+-- Multiplayer: servidor diz GO
+RegisterNetEvent(CE.RACE_START, function()
+    RaceOrchestrator.onRaceStartMP()
+end)
+
+-- Multiplayer: standings calculados server-side pelo RaceServer
+RegisterNetEvent(CE.STANDINGS_UPDATE, function(data)
+    if RaceState.isMultiplayer then
+        RaceOrchestrator.onStandingsUpdate(data)
+    end
+end)
+
+-- Multiplayer: novo host após desconexão do anterior
+RegisterNetEvent(CE.HOST_PROMOTED, function(newHostId)
+    local myId = GetPlayerServerId(PlayerId())
+    if newHostId == myId then
+        RaceState.isHost = true
+        Logger.info("MAIN", "Você se tornou o novo host da sala.")
+    end
 end)
 
 

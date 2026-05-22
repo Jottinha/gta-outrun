@@ -72,8 +72,14 @@ RegisterNetEvent(Config.Events.Client.BE_SPECTATOR, function(leaderId)
     local leaderVeh = RaceState.leaderVeh
     for _, p in ipairs(RaceState.participants) do
         if tostring(p.id) == tostring(leaderId) then
-            if p.vehicle and DoesEntityExist(p.vehicle) then
-                leaderVeh = p.vehicle
+            local v = p.vehicle
+            -- Em MP o vehicle pode ainda não estar resolvido; tenta via netId
+            if (not v or not DoesEntityExist(v)) and p.netId then
+                v = NetToVeh(p.netId)
+            end
+            if v and DoesEntityExist(v) then
+                leaderVeh = v
+                p.vehicle = v
             end
             break
         end

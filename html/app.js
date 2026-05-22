@@ -2,15 +2,13 @@
 
 // ============================================================ State + helpers
 
-const State = { selectedPts: 50, isReady: false, trafficOn: true, isLeader: false };
+const State = { selectedPts: 50, isReady: false, trafficOn: true, isLeader: false, isHost: false };
 
 const $    = (id) => document.getElementById(id);
-const show = (id) => $(id).classList.remove('hidden');
-const hide = (id) => $(id).classList.add('hidden');
+const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
+const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden');    };
 
 // Telas mutuamente exclusivas: showScreen garante que apenas uma fica visível.
-// HUD/countdown/result/end-screen NÃO são "telas" no sentido de menu — eles
-// se sobrepõem em momentos específicos da partida e são controlados em separado.
 const MENU_SCREENS = ['main-menu', 'join-menu', 'lobby'];
 
 function showScreen(id) {
@@ -26,6 +24,21 @@ function postNUI(action, data = {}) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     }).catch(() => {});
+}
+
+// Mostra ou esconde elementos exclusivos do host no lobby.
+function setHostUI(isHost) {
+    State.isHost = isHost;
+    const hostEls = ['btn-start', 'btn-add-npc', 'npc-model', 'npc-personality'];
+    hostEls.forEach(id => isHost ? show(id) : hide(id));
+    // Point targets só o host pode alterar (não-host vê mas não clica)
+    const ptGroup = $('point-targets');
+    if (ptGroup) {
+        ptGroup.querySelectorAll('.btn-option').forEach(b => {
+            b.disabled = !isHost;
+            b.style.opacity = isHost ? '' : '0.4';
+        });
+    }
 }
 
 // ============================================================ Main menu
@@ -55,7 +68,7 @@ function setupJoinMenu() {
 
     $('btn-join-refresh').addEventListener('click', () => {
         postNUI('refreshRooms');
-        renderRoomsList(null); // estado "carregando"
+        renderRoomsList(null);
     });
 }
 
@@ -76,7 +89,7 @@ function renderRoomsList(rooms) {
         <div class="room-card" data-room-id="${r.id}">
             <div>
                 <div class="room-card-host">${r.hostName || ('Sala #' + r.id)}</div>
-                <div class="room-card-meta">${r.humans} jogador(es) · ${r.npcs} NPC(s)</div>
+                <div class="room-card-meta">${r.humans} jogador(es)</div>
             </div>
             <div class="room-card-target">${r.pointTarget} pts</div>
             <div class="room-card-cta">ENTRAR ›</div>
@@ -96,6 +109,7 @@ function renderRoomsList(rooms) {
 function setupLobby() {
     document.querySelectorAll('#point-targets .btn-option').forEach(btn => {
         btn.addEventListener('click', () => {
+            if (!State.isHost) return;
             document.querySelectorAll('#point-targets .btn-option').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             State.selectedPts = parseInt(btn.dataset.pts, 10);
@@ -103,6 +117,7 @@ function setupLobby() {
     });
 
     $('btn-add-npc').addEventListener('click', () => {
+        if (!State.isHost) return;
         postNUI('addNPC', { model: $('npc-model').value, personality: $('npc-personality').value });
     });
 
@@ -124,28 +139,32 @@ function setupLobby() {
         postNUI('toggleReady');
     });
 
-    $('btn-start').addEventListener('click', () => postNUI('startRace'));
+    $('btn-start').addEventListener('click', () => {
+        if (!State.isHost) return;
+        postNUI('startRace');
+    });
 
-    // "Voltar" volta ao main-menu e avisa o server para encerrar/sair da sala.
     $('btn-lobby-back').addEventListener('click', () => {
         postNUI('leaveLobby');
         showScreen('main-menu');
     });
 
-    // "X" fecha tudo (mantém comportamento anterior).
     $('btn-close').addEventListener('click', () => {
         hideAllMenus();
         postNUI('closeMenu');
     });
 }
 
-function renderParticipants(participants) {
-    const allReady = participants.every(p => p.ready || p.isNPC);
-    const pLabel   = { balanced: 'Equilibrado', aggressive: 'Agressivo', precise: 'Preciso' };
+function renderParticipants(participants, isHost) {
+    const allHumansReady = participants.every(p => p.isNPC || p.ready);
+    const pLabel = { balanced: 'Equilibrado', aggressive: 'Agressivo', precise: 'Preciso' };
 
     $('participant-list').innerHTML = participants.map(p => `
         <div class="participant-row">
-            <div class="participant-name">${p.isNPC ? '[NPC]' : '[P] ' + (p.name || p.source)}</div>
+            <div class="participant-name">${p.isNPC
+                ? '[NPC]'
+                : '[P] ' + (p.name || p.source)
+            }</div>
             <div>
                 <div class="participant-car">${p.model || '—'}</div>
                 ${p.isNPC ? `<div class="participant-tag">${pLabel[p.personality] || ''}</div>` : ''}
@@ -153,12 +172,15 @@ function renderParticipants(participants) {
             <div class="participant-ready ${p.ready ? 'ready' : ''}"></div>
         </div>`).join('');
 
-    $('btn-start').disabled = !allReady;
+    // Apenas o host pode iniciar; não-host vê botão desabilitado visualmente
+    const btnStart = $('btn-start');
+    if (btnStart) btnStart.disabled = !allHumansReady || !isHost;
 
-    const me = participants.find(p => !p.isNPC);
-    if (me && me.model) {
+    // Sincroniza seletor de carro do próprio jogador
+    const myPlr = participants.find(p => !p.isNPC);
+    if (myPlr && myPlr.model) {
         const sel = $('my-car');
-        if (sel && sel.value !== me.model) sel.value = me.model;
+        if (sel && sel.value !== myPlr.model) sel.value = myPlr.model;
     }
 }
 
@@ -243,7 +265,7 @@ function countdownGo() {
 function showRoundResult({ results, scores, names }) {
     const getName = (id) => (names && names[id]) || id;
     hide('hud'); show('round-result');
-    const labels = ['1º','2º','3º','4º','5º','6º'];
+    const labels = ['1º','2º','3º','4º','5º','6º','7º','8º'];
     $('result-list').innerHTML = (results||[]).map((r,i) => `
         <div class="result-row">
             <span class="result-pos">${labels[i]||i+1+'º'}</span>
@@ -281,29 +303,40 @@ function showEndScreen({ champion, scores, names }) {
 window.addEventListener('message', ({ data: { action, data } }) => {
     switch (action) {
         // Navegação de menus
-        case 'openMenu':       showScreen('main-menu'); break;
-        case 'showLobby':      showScreen('lobby');     break;
-        case 'hideMenus':      hideAllMenus();          break;
+        case 'openMenu':  showScreen('main-menu'); break;
+        case 'showLobby': showScreen('lobby');     break;
+        case 'hideMenus': hideAllMenus();          break;
 
-        // Compatibilidade legada (algumas chamadas antigas ainda enviam isso)
-        case 'openLobby':      showScreen('lobby');     break;
-        case 'hideLobby':      hideAllMenus();          break;
+        // Compatibilidade legada
+        case 'openLobby': showScreen('lobby'); break;
+        case 'hideLobby': hideAllMenus();      break;
 
-        // Dados de salas
-        case 'lobbyCreated':   showScreen('lobby'); renderParticipants(data.room.participants||[]); break;
-        case 'lobbyUpdated':   renderParticipants(data.room.participants||[]); break;
-        case 'roomsList':      renderRoomsList(data.rooms||[]); break;
+        // Lobby
+        case 'lobbyCreated': {
+            const isHost = data.isHost === true;
+            showScreen('lobby');
+            setHostUI(isHost);
+            renderParticipants(data.room.participants || [], isHost);
+            break;
+        }
+        case 'lobbyUpdated': {
+            const isHost = data.isHost === true;
+            setHostUI(isHost);
+            renderParticipants(data.room.participants || [], isHost);
+            break;
+        }
+        case 'roomsList': renderRoomsList(data.rooms || []); break;
 
         // Corrida em andamento
-        case 'showCountdown':  showCountdown(data); break;
-        case 'countdownTick':  countdownTick(data); break;
-        case 'countdownGo':    countdownGo(); break;
-        case 'showHUD':        show('hud'); break;
-        case 'updateHUD':      updateHUD(data); break;
-        case 'leaderChanged':  playLeaderSwoosh(); break;
+        case 'showCountdown': showCountdown(data); break;
+        case 'countdownTick': countdownTick(data); break;
+        case 'countdownGo':   countdownGo();       break;
+        case 'showHUD':       show('hud');          break;
+        case 'updateHUD':     updateHUD(data);      break;
+        case 'leaderChanged': playLeaderSwoosh();   break;
         case 'showRoundResult':
-        case 'roundResult':    showRoundResult(data); break;
-        case 'endScreen':      showEndScreen(data); break;
+        case 'roundResult':   showRoundResult(data); break;
+        case 'endScreen':     showEndScreen(data);   break;
     }
 });
 

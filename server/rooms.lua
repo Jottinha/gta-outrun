@@ -186,10 +186,119 @@ function Rooms.eachHuman(room, fn)
     end
 end
 
--- Lista salas em estado LOBBY (aguardando jogadores). Estrutura preparada
--- para a tela "Entrar em Corrida" — quando o multiplayer entrar, o cliente
--- usa essa lista para escolher uma sala. Por enquanto retorna apenas salas
--- aguardando início; salas já em corrida são filtradas.
+-- ===== Multiplayer: gestão de humanos e netIds =====
+
+function Rooms.addHuman(room, src)
+    for _, p in ipairs(room.participants) do
+        if p.source == src then return false end
+    end
+    table.insert(room.participants, {
+        source = src,
+        isNPC  = false,
+        ready  = false,
+        model  = Config.Vehicles.DEFAULT,
+    })
+    room.scores[src] = 0
+    return true
+end
+
+function Rooms.humanCount(room)
+    local n = 0
+    for _, p in ipairs(room.participants) do
+        if not p.isNPC then n = n + 1 end
+    end
+    return n
+end
+
+function Rooms.isMultiplayer(room)
+    return Rooms.humanCount(room) > 1
+end
+
+function Rooms.removeAllNPCs(room)
+    local i = 1
+    while i <= #room.participants do
+        if room.participants[i].isNPC then
+            room.scores[room.participants[i].source] = nil
+            table.remove(room.participants, i)
+        else
+            i = i + 1
+        end
+    end
+end
+
+function Rooms.setNetId(room, src, netId)
+    for _, p in ipairs(room.participants) do
+        if p.source == src then
+            p.netId = netId
+            return true
+        end
+    end
+    return false
+end
+
+function Rooms.allHumansSpawned(room)
+    for _, p in ipairs(room.participants) do
+        if not p.isNPC and not p.netId then return false end
+    end
+    return true
+end
+
+function Rooms.clearNetIds(room)
+    for _, p in ipairs(room.participants) do
+        p.netId = nil
+    end
+end
+
+function Rooms.buildNetIdMap(room)
+    local map = {}
+    for _, p in ipairs(room.participants) do
+        if not p.isNPC and p.netId then
+            map[tostring(p.source)] = {
+                netId       = p.netId,
+                model       = p.model,
+                displayName = GetPlayerName(p.source) or ("Jogador " .. tostring(p.source)),
+            }
+        end
+    end
+    return map
+end
+
+function Rooms.promoteNextHost(room)
+    for _, p in ipairs(room.participants) do
+        if not p.isNPC and p.source ~= room.host then
+            room.host = p.source
+            return p.source
+        end
+    end
+    return nil
+end
+
+-- Serializa a sala com nomes de display para enviar à NUI.
+function Rooms.toLobbyPayload(room)
+    local participants = {}
+    for _, p in ipairs(room.participants) do
+        participants[#participants + 1] = {
+            source      = p.source,
+            isNPC       = p.isNPC,
+            ready       = p.ready,
+            model       = p.model,
+            personality = p.personality,
+            name        = p.isNPC and nil or (GetPlayerName(p.source) or ("Jogador " .. tostring(p.source))),
+        }
+    end
+    return {
+        id           = room.id,
+        host         = room.host,
+        state        = room.state,
+        pointTarget  = room.pointTarget,
+        scores       = room.scores,
+        participants = participants,
+        roundNum     = room.roundNum,
+    }
+end
+
+
+-- Lista salas em estado LOBBY (aguardando jogadores).
 function Rooms.list()
     local out = {}
     for _, room in pairs(rooms) do

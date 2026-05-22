@@ -15,6 +15,7 @@ shared_scripts {
 
 server_scripts {
     'server/rooms.lua',
+    'server/race_server.lua',
     'server/round_manager.lua',
     'server/disconnect.lua',
     'server/main.lua',

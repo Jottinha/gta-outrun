@@ -86,6 +86,9 @@ Config.Race = {
     WIN_CONFIRM_TICKS          = 4,
     EVADE_CHASERS_CONSIDERED   = 3,
 
+    -- ─── Multiplayer ─────────────────────────────────────────────────────────
+    MAX_PLAYERS                = 8,
+
     -- ─── Grid ────────────────────────────────────────────────────────────────
     GRID_ROW_SPACING           = 8.0,
     GRID_COLUMN_SPACING        = 4.5,
@@ -229,6 +232,10 @@ Config.Events = {
         PLAYER_ELIMINATED   = "outrun:server:PlayerEliminated",
         LEAVE_LOBBY         = "outrun:server:LeaveLobby",
         REQUEST_ROOMS_LIST  = "outrun:server:RequestRoomsList",
+        -- Multiplayer
+        JOIN_ROOM           = "outrun:server:JoinRoom",
+        SPAWN_READY         = "outrun:server:SpawnReady",
+        POSITION_SNAPSHOT   = "outrun:server:PositionSnapshot",
     },
 
     Client = {
@@ -244,6 +251,13 @@ Config.Events = {
         CLEAR_WANTED       = "outrun:client:ClearWanted",
         ROUND_RESULT       = "outrun:client:RoundResult",
         SHOW_END_SCREEN    = "outrun:client:ShowEndScreen",
+        -- Multiplayer
+        SPAWN_MY_VEHICLE   = "outrun:client:SpawnMyVehicle",
+        ALL_SPAWNED        = "outrun:client:AllSpawned",
+        COUNTDOWN_TICK     = "outrun:client:CountdownTick",
+        RACE_START         = "outrun:client:RaceStart",
+        STANDINGS_UPDATE   = "outrun:client:StandingsUpdate",
+        HOST_PROMOTED      = "outrun:client:HostPromoted",
     },
 }
 

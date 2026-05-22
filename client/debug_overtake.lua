@@ -10,8 +10,8 @@
 --  usa. Alterar um número em Config.Race.LEADER_* muda o desenho
 --  automaticamente, sem reiniciar o recurso.
 --
---  Escopo: só desenha quando o player é HOST e há corrida ativa
---  (o tick roda no host; em non-host a math é apenas buildView).
+--  Escopo: qualquer player com corrida ativa pode ativar.
+--  A visualização usa a entidade de rede do líder, visível para todos.
 -- ============================================================
 
 DebugOvertake = {}
@@ -153,7 +153,7 @@ local function startRenderThread()
     Citizen.CreateThread(function()
         while enabled and renderGen == myGen do
             local leaderVeh = RaceState.leaderVeh
-            if RaceState.isActive() and RaceState.isHost
+            if RaceState.isActive()
                and leaderVeh and DoesEntityExist(leaderVeh) then
                 local cfg  = RaceLogic.getCfg()
                 local snap = snapshotOfVehicle(leaderVeh)

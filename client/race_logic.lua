@@ -157,3 +157,40 @@ end
 function RaceLogic.StopLoop()
     loopGeneration = loopGeneration + 1
 end
+
+
+-- ------------------------------------------------------------
+-- Loop de snapshots para modo multiplayer.
+-- Não calcula liderança localmente — apenas envia posição ao servidor
+-- a cada tick para que RaceServer.lua rode OvertakeCore.
+-- ------------------------------------------------------------
+
+function RaceLogic.StartSnapshotLoop()
+    loopGeneration = loopGeneration + 1
+    local myGen = loopGeneration
+    local myVeh = RaceState.myVehicle
+
+    Citizen.CreateThread(function()
+        while RaceState.isActive() and loopGeneration == myGen do
+            if myVeh and DoesEntityExist(myVeh) then
+                local pos   = GetEntityCoords(myVeh)
+                local fwd   = GetEntityForwardVector(myVeh)
+                local vel   = GetEntityVelocity(myVeh)
+                local speed = math.sqrt(vel.x * vel.x + vel.y * vel.y)
+                TriggerServerEvent(Config.Events.Server.POSITION_SNAPSHOT, {
+                    x          = pos.x,
+                    y          = pos.y,
+                    z          = pos.z,
+                    fx         = fwd.x,
+                    fy         = fwd.y,
+                    vx         = vel.x,
+                    vy         = vel.y,
+                    speed      = speed,
+                    valid      = true,
+                    eliminated = RaceState.eliminated,
+                })
+            end
+            Citizen.Wait(Config.Race.DISTANCE_UPDATE_INTERVAL)
+        end
+    end)
+end
