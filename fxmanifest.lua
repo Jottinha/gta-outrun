@@ -29,6 +29,7 @@ client_scripts {
     'client/ai/ai_strategy.lua',
     'client/ai/ai_controller.lua',
     'client/spectator.lua',
+    'client/leader_blip.lua',
     'client/race_orchestrator.lua',
     'client/main.lua',
 }

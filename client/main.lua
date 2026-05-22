@@ -154,6 +154,15 @@ RegisterNetEvent(CE.LEADER_CHANGED, function(leaderId)
     if RaceState.eliminated and RaceState.leaderVeh then
         Spectator.SetTarget(RaceState.leaderVeh)
     end
+
+    -- Marca o líder no minimap dos OUTROS jogadores (com rota GPS).
+    -- Se o player local É o líder, limpa o blip (não faz sentido marcar a si mesmo).
+    local myId = GetPlayerServerId(PlayerId())
+    if leaderId == myId then
+        LeaderBlip.clear()
+    else
+        LeaderBlip.setTarget(RaceState.leaderVeh)
+    end
 end)
 
 RegisterNetEvent(CE.CLEAR_WANTED, function()
@@ -171,6 +180,7 @@ RegisterNetEvent(CE.SHOW_END_SCREEN, function(champion, scores, names)
 
     RaceOrchestrator.endSession()
     RaceState.reset()
+    LeaderBlip.clear()
 
     Nui.setFocus(true)
     Nui.send('endScreen', { champion = champion, scores = scores, names = names })
@@ -183,6 +193,7 @@ end)
 RegisterNetEvent(CE.FORCE_LOBBY_CLOSE, function()
     hasActiveLobby = false
     RaceState.reset()
+    LeaderBlip.clear()
     Nui.setFocus(false)
     Nui.send('hideMenus', {})
     notify("A sala foi encerrada.")

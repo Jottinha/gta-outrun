@@ -169,6 +169,7 @@ local function endRound(standings)
     roundEnded = true
     RaceLogic.StopLoop()
     AIController.StopLoop()
+    LeaderBlip.clear()
     local results = RaceState.buildRoundResults(standings)
     TriggerServerEvent(SE.ROUND_END, results)
 end
@@ -208,6 +209,7 @@ end
 function RaceOrchestrator.beginRound(payload)
     -- Cleanup de uma rodada anterior dentro do mesmo lobby
     RaceOrchestrator.cleanupVehicles()
+    LeaderBlip.clear()
 
     AIController.UnregisterAll()
     RaceState.participants     = {}
@@ -235,6 +237,7 @@ function RaceOrchestrator.endSession()
     roundEnded = true
     RaceLogic.StopLoop()
     AIController.StopLoop()
+    LeaderBlip.clear()
 
     AIController.UnregisterAll()
     Spectator.Stop()
