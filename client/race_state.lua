@@ -13,6 +13,9 @@ RaceState = {
     leaderVeh        = nil,
     runnerUpId       = nil,
     runnerUpVeh      = nil,
+    -- Top-K vehicles dos perseguidores ordenados (mais próximo do líder primeiro).
+    -- Usado pela IA do líder para fugir considerando múltiplos chasers.
+    topChasers       = {},
     myVehicle        = nil,
     participants     = {},
     eliminationOrder = {},
@@ -32,6 +35,7 @@ function RaceState.reset()
     RaceState.leaderVeh        = nil
     RaceState.runnerUpId       = nil
     RaceState.runnerUpVeh      = nil
+    RaceState.topChasers       = {}
     RaceState.myVehicle        = nil
     RaceState.participants     = {}
     RaceState.eliminationOrder = {}

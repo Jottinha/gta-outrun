@@ -1,173 +1,152 @@
+-- ============================================================
+--  OUTRUN — Client: RaceLogic (adapter sobre OvertakeCore)
+--
+--  Camada fina entre FiveM e o módulo puro `shared/overtake_core.lua`.
+--  Aqui:
+--    * Coletamos coords/forward das entidades reais
+--    * Montamos snapshots no formato esperado pelo core
+--    * Despachamos para o tick do core e devolvemos o resultado
+--
+--  O core não conhece nada de FiveM, o que permite reaproveitar a mesma
+--  lógica num adapter server-side (ver MULTIPLAYER_PLAN §3.1).
+-- ============================================================
+
 RaceLogic = {}
 
-local function normalize2D(x, y)
-    local magnitude = math.sqrt((x * x) + (y * y))
-    if magnitude <= 0.0001 then
-        return 0.0, 1.0
-    end
+local overtakeState = nil
+local loopGeneration = 0
 
-    return x / magnitude, y / magnitude
+
+-- ------------------------------------------------------------
+-- Config: snapshot do que o core precisa, montado uma vez por tick
+-- ------------------------------------------------------------
+
+local function makeCfg()
+    return {
+        -- Limiares de ultrapassagem (PASS dinâmico)
+        PASS_DISTANCE_NEAR           = Config.Race.LEADER_PASS_DISTANCE_NEAR,
+        PASS_DISTANCE                = Config.Race.LEADER_PASS_DISTANCE,
+        NEAR_LATERAL                 = Config.Race.LEADER_NEAR_LATERAL,
+        MAX_LATERAL_FOR_PASS         = Config.Race.LEADER_MAX_LATERAL_FOR_PASS,
+        PASS_DISTANCE_HARD           = Config.Race.LEADER_PASS_DISTANCE_HARD,
+        OVERRIDE_DISTANCE            = Config.Race.LEADER_OVERRIDE_DISTANCE,
+        MAX_Z_DIFF                   = Config.Race.LEADER_MAX_Z_DIFF,
+        -- Filtros do candidato
+        MIN_SPEED_FOR_PASS           = Config.Race.LEADER_MIN_SPEED_FOR_PASS,
+        MIN_ALIGNMENT                = Config.Race.LEADER_MIN_ALIGNMENT,
+        -- Histerese SOFT/HARD
+        LEADER_HOLD_TICKS            = Config.Race.LEADER_HOLD_TICKS,
+        LEADER_MIN_CURRENT_TICKS     = Config.Race.LEADER_MIN_CURRENT_TICKS,
+        LEADER_HARD_HOLD_TICKS       = Config.Race.LEADER_HARD_HOLD_TICKS,
+        LEADER_CHANGE_COOLDOWN_TICKS = Config.Race.LEADER_CHANGE_COOLDOWN_TICKS,
+        -- Win / direção / cache
+        WIN_DISTANCE                 = Config.Race.WIN_DISTANCE,
+        ELIMINATION_DISTANCE         = Config.Race.ELIMINATION_DISTANCE,
+        WIN_CONFIRM_TICKS            = Config.Race.WIN_CONFIRM_TICKS,
+        MIN_SPEED_FOR_VELOCITY_FWD   = Config.Race.LEADER_MIN_SPEED_FOR_VELOCITY_FWD,
+        FORWARD_MIN_MAGNITUDE        = Config.Race.FORWARD_MIN_MAGNITUDE,
+        FORWARD_CACHE_MAX_AGE_TICKS  = Config.Race.FORWARD_CACHE_MAX_AGE_TICKS,
+    }
 end
 
-local function getActiveParticipants(participants)
-    local active = {}
 
-    for _, participant in ipairs(participants) do
-        if not participant.eliminated
-        and participant.vehicle
-        and DoesEntityExist(participant.vehicle) then
-            active[#active + 1] = participant
+-- ------------------------------------------------------------
+-- Coleta de snapshots: traduz `RaceState.participants` → entries puras
+-- ------------------------------------------------------------
+
+local function collectSnapshots(participants)
+    local snapshots = {}
+    for _, p in ipairs(participants) do
+        local valid = p.vehicle and DoesEntityExist(p.vehicle)
+        if valid then
+            local pos = GetEntityCoords(p.vehicle)
+            local fwd = GetEntityForwardVector(p.vehicle)
+            local vel = GetEntityVelocity(p.vehicle)
+            local speed2d = math.sqrt(vel.x * vel.x + vel.y * vel.y)
+            snapshots[#snapshots + 1] = {
+                id         = p.id,
+                isNPC      = p.isNPC,
+                vehicle    = p.vehicle,
+                valid      = true,
+                eliminated = p.eliminated == true,
+                x = pos.x, y = pos.y, z = pos.z,
+                fx = fwd.x, fy = fwd.y,
+                vx = vel.x, vy = vel.y,
+                speed = speed2d,
+            }
+        else
+            snapshots[#snapshots + 1] = {
+                id         = p.id,
+                isNPC      = p.isNPC,
+                vehicle    = p.vehicle,
+                valid      = false,
+                eliminated = p.eliminated == true,
+            }
         end
     end
-
-    return active
+    return snapshots
 end
 
-local function findParticipantByVehicle(participants, vehicle)
-    for _, participant in ipairs(participants) do
-        if participant.vehicle == vehicle then
-            return participant
-        end
-    end
 
-    return nil
-end
-
-local function getVehicleFrame(vehicle)
-    local position = GetEntityCoords(vehicle)
-    local forward = GetEntityForwardVector(vehicle)
-    local fx, fy = normalize2D(forward.x, forward.y)
-
-    return position, fx, fy
-end
+-- ------------------------------------------------------------
+-- Helpers públicos
+-- ------------------------------------------------------------
 
 function RaceLogic.Dist2D(a, b)
     local dx = a.x - b.x
     local dy = a.y - b.y
-    return math.sqrt((dx * dx) + (dy * dy))
+    return math.sqrt(dx * dx + dy * dy)
 end
 
-function RaceLogic.ResolveLeader(participants, currentLeaderVeh)
-    local active = getActiveParticipants(participants)
-    if #active == 0 then
-        return nil, nil
-    end
-
-    local leaderVeh = currentLeaderVeh
-    if not leaderVeh or not DoesEntityExist(leaderVeh) then
-        leaderVeh = active[1].vehicle
-    end
-
-    if not findParticipantByVehicle(active, leaderVeh) then
-        leaderVeh = active[1].vehicle
-    end
-
-    for _ = 1, #active do
-        local leaderPos, forwardX, forwardY = getVehicleFrame(leaderVeh)
-        local bestCandidate = nil
-
-        for _, participant in ipairs(active) do
-            if participant.vehicle ~= leaderVeh then
-                local participantPos = GetEntityCoords(participant.vehicle)
-                local dx = participantPos.x - leaderPos.x
-                local dy = participantPos.y - leaderPos.y
-                local dz = math.abs(participantPos.z - leaderPos.z)
-                local longitudinal = (dx * forwardX) + (dy * forwardY)
-                local lateral = math.abs((dx * forwardY) - (dy * forwardX))
-
-                if dz <= Config.Race.LEADER_MAX_Z_DIFF
-                and longitudinal > Config.Race.LEADER_PASS_DISTANCE then
-                    if not bestCandidate
-                    or longitudinal > bestCandidate.longitudinal
-                    or (
-                        math.abs(longitudinal - bestCandidate.longitudinal) <= 0.5
-                        and lateral < bestCandidate.lateral
-                    ) then
-                        bestCandidate = {
-                            vehicle = participant.vehicle,
-                            longitudinal = longitudinal,
-                            lateral = lateral,
-                        }
-                    end
-                end
-            end
-        end
-
-        if not bestCandidate then
-            break
-        end
-
-        leaderVeh = bestCandidate.vehicle
-    end
-
-    local leaderParticipant = findParticipantByVehicle(active, leaderVeh)
-    return leaderVeh, leaderParticipant and leaderParticipant.id or nil
+function RaceLogic.resetState()
+    overtakeState = OvertakeCore.newState()
 end
 
-function RaceLogic.BuildStandings(participants, leaderVeh)
-    local active = getActiveParticipants(participants)
-    if #active == 0 or not leaderVeh or not DoesEntityExist(leaderVeh) then
-        return {}
-    end
-
-    local leaderPos, forwardX, forwardY = getVehicleFrame(leaderVeh)
-    local standings = {}
-
-    for _, participant in ipairs(active) do
-        local participantPos = GetEntityCoords(participant.vehicle)
-        local dx = participantPos.x - leaderPos.x
-        local dy = participantPos.y - leaderPos.y
-
-        standings[#standings + 1] = {
-            id = participant.id,
-            vehicle = participant.vehicle,
-            isNPC = participant.isNPC,
-            dist = RaceLogic.Dist2D(leaderPos, participantPos),
-            longitudinal = (dx * forwardX) + (dy * forwardY),
-            lateral = math.abs((dx * forwardY) - (dy * forwardX)),
-            isLeader = participant.vehicle == leaderVeh,
-        }
-    end
-
-    table.sort(standings, function(a, b)
-        if a.isLeader ~= b.isLeader then
-            return a.isLeader
-        end
-
-        if math.abs(a.dist - b.dist) > 0.5 then
-            return a.dist < b.dist
-        end
-
-        if math.abs(a.longitudinal - b.longitudinal) > 0.5 then
-            return a.longitudinal > b.longitudinal
-        end
-
-        return a.lateral < b.lateral
-    end)
-
-    return standings
+-- Host: corre o algoritmo completo (histerese, eliminação, vitória).
+function RaceLogic.tick(participants)
+    if not overtakeState then RaceLogic.resetState() end
+    return OvertakeCore.tick(overtakeState, collectSnapshots(participants), makeCfg())
 end
 
-function RaceLogic.GetRaceSnapshot(participants, currentLeaderVeh)
-    local leaderVeh, leaderId = RaceLogic.ResolveLeader(participants, currentLeaderVeh)
-    local standings = RaceLogic.BuildStandings(participants, leaderVeh)
-
-    return {
-        leaderVeh = leaderVeh,
-        leaderId = leaderId or (standings[1] and standings[1].id or nil),
-        standings = standings,
-        runnerUp = standings[2],
-    }
+-- Não-host: só constrói standings em torno de um líder já decidido.
+--
+-- ATENÇÃO (multiplayer): hoje o servidor só envia SPAWN_VEHICLES ao host
+-- (round_manager.lua:52), então não-host fica com participants={} e este
+-- branch produz standings vazias na prática. É o placeholder do
+-- MULTIPLAYER_PLAN §3.1 — quando a sincronização de participants chegar
+-- ao non-host, o branch passa a funcionar sem mais mudanças.
+function RaceLogic.buildView(participants, leaderId)
+    return OvertakeCore.buildView(collectSnapshots(participants), leaderId, makeCfg())
 end
 
-function RaceLogic.StartLoop(getParticipants, getLeaderVeh, callback)
+
+-- ------------------------------------------------------------
+-- Loop principal — host roda tick(), demais buildView()
+-- Geração token: nova `StartLoop` invalida a thread anterior.
+-- ------------------------------------------------------------
+
+function RaceLogic.StartLoop(getParticipants, getLeaderId, callback)
+    loopGeneration = loopGeneration + 1
+    local myGen = loopGeneration
+    RaceLogic.resetState()
+
     Citizen.CreateThread(function()
-        while RaceState.isActive() do
-            local snapshot = RaceLogic.GetRaceSnapshot(getParticipants(), getLeaderVeh())
-            if snapshot.leaderVeh and DoesEntityExist(snapshot.leaderVeh) then
-                callback(snapshot)
+        while RaceState.isActive() and loopGeneration == myGen do
+            local participants = getParticipants()
+            local result
+            if RaceState.isHost then
+                result = RaceLogic.tick(participants)
+            else
+                result = RaceLogic.buildView(participants, getLeaderId())
+            end
+            if result and result.leaderId then
+                callback(result)
             end
             Citizen.Wait(Config.Race.DISTANCE_UPDATE_INTERVAL)
         end
     end)
+end
+
+function RaceLogic.StopLoop()
+    loopGeneration = loopGeneration + 1
 end

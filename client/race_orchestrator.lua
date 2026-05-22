@@ -21,8 +21,22 @@ local roundEnded      = false
 -- ===== Acessors usados pelos loops =====
 
 local function getLeaderVeh()    return RaceState.leaderVeh    end
-local function getRunnerUpVeh()  return RaceState.runnerUpVeh  end
+local function getTopChasers()   return RaceState.topChasers   end
+local function getLeaderId()     return RaceState.leaderId     end
 local function getParticipants() return RaceState.participants end
+
+-- Extrai dos standings os top-K perseguidores reais (não-líder e não-"ahead"),
+-- já ordenados (mais próximo do líder primeiro). Usado pela IA do líder.
+local function pickTopChasers(standings, maxChasers)
+    local chasers = {}
+    for _, entry in ipairs(standings) do
+        if not entry.isLeader and not entry.ahead and entry.vehicle then
+            chasers[#chasers + 1] = entry.vehicle
+            if #chasers >= maxChasers then break end
+        end
+    end
+    return chasers
+end
 
 
 -- ============================================================
@@ -82,9 +96,9 @@ local function launch(bonus)
 
     AIController.ReleaseGrid()
     if RaceState.isHost then
-        AIController.StartLoop(getLeaderVeh, getRunnerUpVeh)
+        AIController.StartLoop(getLeaderVeh, getTopChasers)
     end
-    RaceLogic.StartLoop(getParticipants, getLeaderVeh, RaceOrchestrator.onTick)
+    RaceLogic.StartLoop(getParticipants, getLeaderId, RaceOrchestrator.onTick)
 end
 
 
@@ -92,56 +106,58 @@ end
 -- Tick: chamado pelo RaceLogic.StartLoop
 -- ============================================================
 
-local function broadcastLeaderChange(topId, snapshot)
+local function broadcastLeaderChange(topId, standings)
     RaceState.leaderId  = topId
-    RaceState.leaderVeh = snapshot.leaderVeh or (snapshot.standings[1] and snapshot.standings[1].vehicle)
+    RaceState.leaderVeh = standings[1] and standings[1].vehicle or nil
     if RaceState.isHost then
         TriggerServerEvent(SE.UPDATE_LEADER, topId)
     end
     Nui.send('leaderChanged', { leaderId = topId })
 end
 
-local function updateLocalHUD(standings)
+local function updateLocalHUD(standings, runnerUp)
     local myId   = GetPlayerServerId(PlayerId())
-    local myDist = 0.0
-    local myPos  = 1
-    local foundMe = false
+    local myEntry, myPos = nil, 1
 
     for pos, entry in ipairs(standings) do
         if entry.id == myId then
-            myDist  = entry.dist
+            myEntry = entry
             myPos   = pos
-            foundMe = true
             break
         end
     end
 
-    if not foundMe or RaceState.eliminated then return end
+    if not myEntry or RaceState.eliminated then return end
 
-    local isLeader  = (myId == RaceState.leaderId)
-    local distTo2nd = standings[2] and standings[2].dist or 0.0
+    local isLeader = (myId == RaceState.leaderId)
+    -- "distância em risco" do jogador:
+    --   * líder: distância ao verdadeiro 2º colocado (carro atrás), ou nil se está sozinho
+    --   * caçador: o quanto ele está ATRÁS do líder (= -longitudinal)
+    local riskDist
+    if isLeader then
+        riskDist = runnerUp and (-runnerUp.longitudinal) or nil
+    else
+        riskDist = -myEntry.longitudinal
+        if riskDist < 0 then riskDist = 0 end
+    end
 
     Nui.send('updateHUD', {
         isLeader = isLeader,
-        dist     = isLeader and distTo2nd or myDist,
+        dist     = riskDist,
         maxDist  = Config.Race.WIN_DISTANCE,
         position = myPos,
         total    = #standings,
     })
 end
 
-local function processEliminations(standings)
-    for index = #standings, 1, -1 do
-        local entry = standings[index]
-        if entry.dist >= Config.Race.ELIMINATION_DISTANCE
-        and entry.id ~= RaceState.leaderId then
-            local marked = RaceState.markEliminated(entry.id)
-            if marked then
-                if entry.isNPC then
-                    AIController.SetState(entry.id, Config.States.AI.ELIMINATED)
-                else
-                    TriggerServerEvent(CE.PLAYER_ELIMINATED, entry.id)
-                end
+local function applyEliminations(eliminations)
+    for _, entry in ipairs(eliminations) do
+        local marked = RaceState.markEliminated(entry.id)
+        if marked then
+            if entry.isNPC then
+                AIController.SetState(entry.id, Config.States.AI.ELIMINATED)
+            else
+                TriggerServerEvent(SE.PLAYER_ELIMINATED, entry.id)
             end
         end
     end
@@ -150,38 +166,36 @@ end
 local function endRound(standings)
     RaceState.active = false
     roundEnded = true
+    RaceLogic.StopLoop()
+    AIController.StopLoop()
     local results = RaceState.buildRoundResults(standings)
     TriggerServerEvent(SE.ROUND_END, results)
 end
 
-function RaceOrchestrator.onTick(snapshot)
-    local standings = snapshot.standings
+function RaceOrchestrator.onTick(result)
+    local standings = result.standings
     if #standings == 0 then return end
 
-    local topId = snapshot.leaderId or standings[1].id
-    if topId ~= RaceState.leaderId or snapshot.leaderVeh ~= RaceState.leaderVeh then
-        broadcastLeaderChange(topId, snapshot)
+    local topId = result.leaderId
+    if topId and (topId ~= RaceState.leaderId or
+                  (standings[1] and standings[1].vehicle ~= RaceState.leaderVeh)) then
+        broadcastLeaderChange(topId, standings)
     end
 
-    RaceState.runnerUpId  = snapshot.runnerUp and snapshot.runnerUp.id      or nil
-    RaceState.runnerUpVeh = snapshot.runnerUp and snapshot.runnerUp.vehicle or nil
+    RaceState.runnerUpId  = result.runnerUp and result.runnerUp.id      or nil
+    RaceState.runnerUpVeh = result.runnerUp and result.runnerUp.vehicle or nil
+    RaceState.topChasers  = pickTopChasers(standings, Config.Race.EVADE_CHASERS_CONSIDERED)
 
-    updateLocalHUD(standings)
+    updateLocalHUD(standings, result.runnerUp)
 
-    if not RaceState.isHost or roundEnded then return end
+    if not RaceState.isHost or roundEnded or result.skipped then return end
 
-    processEliminations(standings)
+    if result.eliminations and #result.eliminations > 0 then
+        applyEliminations(result.eliminations)
+    end
 
-    -- Recalcula standings depois das eliminações para decidir vitória
-    local resolved = RaceLogic.GetRaceSnapshot(getParticipants(), RaceState.leaderVeh)
-    local resolvedStandings = resolved.standings
-
-    local winConditionMet =
-        (#resolvedStandings >= 2 and resolvedStandings[2].dist >= Config.Race.WIN_DISTANCE)
-        or (#resolvedStandings == 1)
-
-    if winConditionMet then
-        endRound(resolvedStandings)
+    if result.winConfirmed then
+        endRound(standings)
     end
 end
 
@@ -200,6 +214,7 @@ function RaceOrchestrator.beginRound(payload)
     RaceState.eliminated       = false
     RaceState.runnerUpId       = nil
     RaceState.runnerUpVeh      = nil
+    RaceState.topChasers       = {}
     Spectator.Stop()
 
     spawnedVehicles = Spawn.run(payload)
@@ -217,6 +232,8 @@ end
 function RaceOrchestrator.endSession()
     RaceState.active = false
     roundEnded = true
+    RaceLogic.StopLoop()
+    AIController.StopLoop()
 
     AIController.UnregisterAll()
     Spectator.Stop()

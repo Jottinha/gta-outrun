@@ -10,6 +10,7 @@ dependency 'qb-core'
 shared_scripts {
     'config.lua',
     'shared/logger.lua',
+    'shared/overtake_core.lua',
 }
 
 server_scripts {

@@ -27,8 +27,9 @@ AIStrategy.Base = {
     recoverySpeed          = Config.AI.RECOVERY_SPEED,
     overtakeSpeed          = Config.AI.EVADE_SPEED,
 
-    -- Limiares de transição
-    chaseCloseThreshold    = Config.AI.CHASE_CLOSE_DISTANCE,
+    -- Limiares de transição (histerese assimétrica entre CHASE e CHASER_CLOSE)
+    chaseCloseThreshold    = Config.AI.CHASE_CLOSE_DISTANCE,        -- entra CHASER_CLOSE em <= threshold
+    chaseCloseExit         = Config.AI.CHASE_CLOSE_EXIT_DISTANCE,   -- só sai de CHASER_CLOSE em >  exit
     chaseCloseAhead        = Config.AI.CHASE_CLOSE_AHEAD_DISTANCE,
     chaseCloseUpdateMs     = Config.AI.CHASE_CLOSE_UPDATE_MS,
     evadeForwardDistance   = Config.AI.EVADE_FORWARD_DISTANCE,
@@ -80,6 +81,7 @@ AIStrategy.Aggressive = AIStrategy.makeFrom(AIStrategy.Base, {
     evadeSpeed          = 90.0,
     overtakeSpeed       = 90.0,
     chaseCloseThreshold = 15.0,
+    chaseCloseExit      = 20.0,
     chaseCloseAhead     = 36.0,
     rubberBand = {
         leaderSlowFactor  = 0.85,
@@ -95,6 +97,7 @@ AIStrategy.Precise = AIStrategy.makeFrom(AIStrategy.Base, {
     overtakeSpeed       = 75.0,
     recoverySpeed       = 10.0,
     chaseCloseThreshold = 8.0,
+    chaseCloseExit      = 12.0,
     chaseCloseAhead     = 24.0,
     rubberBand = {
         leaderSlowFactor  = 0.85,

@@ -79,7 +79,8 @@
 | Arquivo                       | Responsabilidade                                                            |
 |-------------------------------|-----------------------------------------------------------------------------|
 | `client/race_state.lua`       | Container do estado local da corrida (`RaceState`) + reset/clear            |
-| `client/race_logic.lua`       | `ResolveLeader`, `BuildStandings`, `Dist2D`, `GetRaceSnapshot`, `StartLoop` |
+| `shared/overtake_core.lua`    | **Lógica pura de ultrapassagem** — `newState`, `tick`, `buildView` (sem FiveM) |
+| `client/race_logic.lua`       | Adapter de `OvertakeCore` — coleta snapshots de FiveM, expõe `tick`, `buildView`, `Dist2D`, `StartLoop`, `StopLoop` |
 | `client/grid.lua`             | `Grid.computeOffset(index, total)` — posicionamento F1                      |
 | `client/spawn.lua`            | `Spawn.spawnAll(payload)` — cria veículos + peds NPC + warp jogador        |
 | `client/nui_bridge.lua`       | `Nui.send(action, data)`, `Nui.setFocus`, registro central de callbacks     |
@@ -102,6 +103,7 @@
 shared_scripts:
   1. config.lua
   2. shared/logger.lua
+  3. shared/overtake_core.lua
 
 server_scripts:
   1. server/rooms.lua
@@ -162,14 +164,30 @@ Host clica INICIAR
 
 ```
 RaceLogic.StartLoop (50 ms)
-  ▸ GetRaceSnapshot (ResolveLeader + BuildStandings)
+  ▸ collectSnapshots (FiveM → entries puras)
+  ▸ host: OvertakeCore.tick   → {leaderId, standings, runnerUp, eliminations, winConfirmed}
+    não-host: OvertakeCore.buildView (líder vem do server via UPDATE_LEADER)
   ▸ callback ─▶ RaceOrchestrator.onTick
        ▸ se líder mudou ─▶ ServerEvent UPDATE_LEADER + Nui leaderChanged
-       ▸ atualiza HUD (Nui.send updateHUD)
-       ▸ (host) marca eliminados ─▶ ServerEvent PLAYER_ELIMINATED
-       ▸ (host) checa vitória do líder (dist do 2º >= 500)
-         ↳ se vitória: endRound(standings) ─▶ ServerEvent ROUND_END
+       ▸ atualiza HUD (Nui.send updateHUD; dist nullable)
+       ▸ (host) aplica `result.eliminations` ─▶ ServerEvent PLAYER_ELIMINATED
+       ▸ (host) se `result.winConfirmed`: endRound(standings) ─▶ ServerEvent ROUND_END
 ```
+
+**Histerese aplicada no core (config em `Config.Race`):**
+- `LEADER_HOLD_TICKS`: ENQUANTO houver algum candidato à frente por N ticks consecutivos, a troca acontece (a identidade do candidato pode mudar entre ticks — tolerante a pelotão).
+- `LEADER_PASS_DISTANCE_HARD`: override imediato. Candidato com vantagem ≥ HARD vira líder sem esperar histerese.
+- `WIN_CONFIRM_TICKS`: gap `>= WIN_DISTANCE` precisa persistir por N ticks antes de fechar o round.
+- `FORWARD_MIN_MAGNITUDE`: se o forward 2D do líder estiver instável (capotamento/salto), reusa o forward cacheado do tick anterior.
+
+**Eliminação por longitudinal, não por dist absoluta:** carros 500m **atrás** (longitudinal ≤ −ELIMINATION_DISTANCE) são eliminados; carros à frente em outro nível (viaduto) não são mais punidos.
+
+**Multi-bot (4–5 NPCs):**
+- `EVADE` do líder considera os top-K chasers (`Config.Race.EVADE_CHASERS_CONSIDERED`), não só o runner-up. Vetor de fuga ponderado por 1/dist.
+- Cada NPC recebe `chaseSlot` estável no register → offset lateral em `CHASER_CLOSE` (`Config.AI.CHASER_LATERAL_SPACING`) evita que todos converjam no mesmo carrot.
+- `RECOVERY` é stagger por slot (`STUCK_TIME_STAGGER_MS`) e cada NPC mira no k-ésimo nó mais próximo (`RECOVERY_NODE_VARIANTS`) — anti-cascata em pelotão preso.
+- `CHASE ↔ CHASER_CLOSE` tem histerese assimétrica (`CHASE_CLOSE_DISTANCE` entrada, `CHASE_CLOSE_EXIT_DISTANCE` saída) — anti-flapping na borda.
+- Eliminação de NPC: `AIController.SetState(id, ELIMINATED)` deleta ped/vehicle e remove do registry no mesmo tick (sem esperar o loop de IA).
 
 ### 5.4 Fim de rodada
 

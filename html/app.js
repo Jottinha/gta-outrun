@@ -81,23 +81,27 @@ let dangerPlaying = false;
 function updateHUD({ isLeader, dist, maxDist, position }) {
     State.isLeader = isLeader;
     const fill    = $('hud-bar-fill');
-    const percent = Math.min(dist / maxDist, 1.0);
+    const hasDist = typeof dist === 'number';
+    const percent = hasDist ? Math.min(dist / maxDist, 1.0) : 0;
 
     fill.style.width = (percent * 100).toFixed(1) + '%';
 
     if (isLeader) {
         fill.classList.remove('chaser', 'danger');
         $('hud-position').textContent = 'LÍDER';
+        dangerPlaying = false;
     } else {
         fill.classList.add('chaser');
         $('hud-position').textContent = position + 'º';
-        const isDanger = percent >= 0.8;
+        const isDanger = hasDist && percent >= 0.8;
         fill.classList.toggle('danger', isDanger);
         if (isDanger && !dangerPlaying) { dangerPlaying = true; playBeep(percent); }
         else if (!isDanger) { dangerPlaying = false; }
     }
 
-    $('hud-dist').textContent = Math.floor(dist) + 'm / ' + maxDist + 'm';
+    $('hud-dist').textContent = hasDist
+        ? Math.floor(dist) + 'm / ' + maxDist + 'm'
+        : '— / ' + maxDist + 'm';
 }
 
 function playBeep(intensity) {

@@ -102,7 +102,7 @@ end)
 
 -- ===== Eliminação =====
 
-RegisterNetEvent(CE.PLAYER_ELIMINATED, function(eliminatedId)
+RegisterNetEvent(SE.PLAYER_ELIMINATED, function(eliminatedId)
     local src = source
     local _, room = Rooms.getByHost(src)
     if not room then return end
