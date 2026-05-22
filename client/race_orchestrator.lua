@@ -130,15 +130,16 @@ local function updateLocalHUD(standings, runnerUp)
     if not myEntry or RaceState.eliminated then return end
 
     local isLeader = (myId == RaceState.leaderId)
-    -- "distância em risco" do jogador:
-    --   * líder: distância ao verdadeiro 2º colocado (carro atrás), ou nil se está sozinho
-    --   * caçador: o quanto ele está ATRÁS do líder (= -longitudinal)
+    -- Distância exibida no HUD/barra: 2D euclidiana, NÃO projeção longitudinal.
+    -- A projeção oscila em curvas (mesma posição relativa, ângulo muda) e
+    -- faz a barra encher/esvaziar visualmente sem motivo. A regra de jogo
+    -- (eliminação, win) continua usando `longitudinal` no core; aqui no HUD
+    -- queremos só a distância "no chão" que bate com o que o jogador vê.
     local riskDist
     if isLeader then
-        riskDist = runnerUp and (-runnerUp.longitudinal) or nil
+        riskDist = runnerUp and runnerUp.dist or nil
     else
-        riskDist = -myEntry.longitudinal
-        if riskDist < 0 then riskDist = 0 end
+        riskDist = myEntry.dist or 0
     end
 
     Nui.send('updateHUD', {
