@@ -30,6 +30,7 @@ client_scripts {
     'client/ai/ai_controller.lua',
     'client/spectator.lua',
     'client/leader_blip.lua',
+    'client/debug_overtake.lua',
     'client/race_orchestrator.lua',
     'client/main.lua',
 }

@@ -111,13 +111,16 @@ end
 --      de VELOCIDADE — robusto a capotamento, rotação 180°, loop apertado.
 --   2) senão, usamos o forward visual normalizado (fallback tradicional).
 --   3) se nada estiver utilizável, retorna nil — caller cai em cache/fallback.
-local function resolveRaceDirection(s, cfg)
+-- Exposta como OvertakeCore.resolveDirection para o módulo de debug visual
+-- consumir a MESMA matemática que o tick usa (single source of truth).
+function OvertakeCore.resolveDirection(s, cfg)
     local minVelFwd = cfg.MIN_SPEED_FOR_VELOCITY_FWD or 5.0
     if s.speed and s.speed >= minVelFwd and s.vx and s.vy then
         return s.vx / s.speed, s.vy / s.speed
     end
     return normalizeForward(s, cfg.FORWARD_MIN_MAGNITUDE)
 end
+local resolveRaceDirection = OvertakeCore.resolveDirection
 
 -- Escolhe a âncora quando o líder anterior não existe mais.
 -- Usa o forward cacheado (do último líder válido) para projetar a posição

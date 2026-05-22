@@ -102,6 +102,13 @@ function RaceLogic.resetState()
     overtakeState = OvertakeCore.newState()
 end
 
+-- Exposto para o módulo de debug visual consumir EXATAMENTE a mesma cfg que
+-- o tick consome — assim qualquer alteração em Config.Race.LEADER_* reflete
+-- nos desenhos sem duplicação de constantes (single source of truth).
+function RaceLogic.getCfg()
+    return makeCfg()
+end
+
 -- Host: corre o algoritmo completo (histerese, eliminação, vitória).
 function RaceLogic.tick(participants)
     if not overtakeState then RaceLogic.resetState() end
