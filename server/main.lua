@@ -62,6 +62,32 @@ RegisterNetEvent(SE.TOGGLE_READY, function()
     TriggerClientEvent(CE.LOBBY_UPDATED, room.host, room)
 end)
 
+RegisterNetEvent(SE.LEAVE_LOBBY, function()
+    local src = source
+    local roomId, room = Rooms.getByParticipant(src)
+    if not room or room.state ~= Config.States.Room.LOBBY then return end
+
+    if room.host == src then
+        -- Host saindo: a sala é encerrada para todos os participantes humanos.
+        Rooms.eachHuman(room, function(p)
+            if p.source ~= src then
+                TriggerClientEvent(CE.FORCE_LOBBY_CLOSE, p.source)
+            end
+        end)
+        Rooms.delete(roomId)
+        Logger.info("SRV", ("Sala %d encerrada (host %d saiu)"):format(roomId, src))
+    else
+        Rooms.removeParticipant(room, src)
+        TriggerClientEvent(CE.LOBBY_UPDATED, room.host, room)
+        Logger.info("SRV", ("Jogador %d saiu da sala %d"):format(src, roomId))
+    end
+end)
+
+RegisterNetEvent(SE.REQUEST_ROOMS_LIST, function()
+    local src = source
+    TriggerClientEvent(CE.ROOMS_LIST, src, Rooms.list())
+end)
+
 
 -- ===== Corrida =====
 

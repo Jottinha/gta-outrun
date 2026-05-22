@@ -185,3 +185,28 @@ function Rooms.eachHuman(room, fn)
         end
     end
 end
+
+-- Lista salas em estado LOBBY (aguardando jogadores). Estrutura preparada
+-- para a tela "Entrar em Corrida" — quando o multiplayer entrar, o cliente
+-- usa essa lista para escolher uma sala. Por enquanto retorna apenas salas
+-- aguardando início; salas já em corrida são filtradas.
+function Rooms.list()
+    local out = {}
+    for _, room in pairs(rooms) do
+        if room.state == Config.States.Room.LOBBY then
+            local humans, npcs = 0, 0
+            for _, p in ipairs(room.participants) do
+                if p.isNPC then npcs = npcs + 1 else humans = humans + 1 end
+            end
+            out[#out + 1] = {
+                id          = room.id,
+                hostName    = GetPlayerName(room.host) or ("Host " .. tostring(room.host)),
+                pointTarget = room.pointTarget,
+                humans      = humans,
+                npcs        = npcs,
+                state       = room.state,
+            }
+        end
+    end
+    return out
+end

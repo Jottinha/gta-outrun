@@ -36,11 +36,22 @@ local function nuiCallback(name, fn)
 end
 
 function Nui.registerCallbacks()
-    nuiCallback('createLobby',  function(data) Lobby.create(data)        end)
-    nuiCallback('addNPC',       function(data) Lobby.addNPC(data)        end)
-    nuiCallback('setMyCar',     function(data) Lobby.setMyCar(data)      end)
-    nuiCallback('toggleReady',  function()     Lobby.toggleReady()       end)
-    nuiCallback('startRace',    function()     Lobby.startRace()         end)
-    nuiCallback('closeLobby',   function()     Lobby.close()             end)
-    nuiCallback('setTraffic',   function(data) Lobby.setTraffic(data)    end)
+    -- Main menu / navegação
+    nuiCallback('openCreate',    function(data) Lobby.create(data)         end)
+    nuiCallback('refreshRooms',  function()     Lobby.refreshRooms()       end)
+    nuiCallback('joinRoom',      function(data) Lobby.joinRoom(data)       end)
+    nuiCallback('leaveLobby',    function()     Lobby.leave()              end)
+    nuiCallback('closeMenu',     function()     Lobby.closeMenu()          end)
+
+    -- Lobby (configuração de corrida)
+    nuiCallback('addNPC',        function(data) Lobby.addNPC(data)         end)
+    nuiCallback('setMyCar',      function(data) Lobby.setMyCar(data)       end)
+    nuiCallback('toggleReady',   function()     Lobby.toggleReady()        end)
+    nuiCallback('startRace',     function()     Lobby.startRace()          end)
+    nuiCallback('setTraffic',    function(data) Lobby.setTraffic(data)     end)
+
+    -- Aliases legados (compat com versões anteriores da NUI; podem ser
+    -- removidos depois que estabilizar)
+    nuiCallback('createLobby',   function(data) Lobby.create(data)         end)
+    nuiCallback('closeLobby',    function()     Lobby.closeMenu()          end)
 end

@@ -8,12 +8,62 @@
 </head>
 <body>
 
-<!-- ===================== LOBBY ===================== -->
+<!-- ===================== MAIN MENU ===================== -->
+<div id="main-menu" class="hidden screen-backdrop">
+    <div class="menu-container">
+        <header class="menu-header">
+            <h1 class="neon-title">OUTRUN</h1>
+            <p class="menu-subtitle">Modo gato e rato — corrida arcade</p>
+        </header>
+
+        <div class="menu-cards">
+            <button class="menu-card" id="card-create">
+                <div class="menu-card-icon">▶</div>
+                <div class="menu-card-title">CRIAR CORRIDA</div>
+                <div class="menu-card-sub">Configurar carro, NPCs e regras</div>
+            </button>
+
+            <button class="menu-card" id="card-join">
+                <div class="menu-card-icon">⇉</div>
+                <div class="menu-card-title">ENTRAR EM CORRIDA</div>
+                <div class="menu-card-sub">Listar salas de outros jogadores</div>
+            </button>
+        </div>
+
+        <footer class="menu-footer">
+            <button class="btn-secondary" id="btn-menu-close">FECHAR</button>
+        </footer>
+    </div>
+</div>
+
+<!-- ===================== JOIN MENU ===================== -->
+<div id="join-menu" class="hidden screen-backdrop">
+    <div class="menu-container">
+        <header class="menu-header join-header">
+            <button class="btn-back" id="btn-join-back">← VOLTAR</button>
+            <h2 class="neon-title small">SALAS DISPONÍVEIS</h2>
+            <button class="btn-refresh" id="btn-join-refresh" title="Atualizar lista">⟳</button>
+        </header>
+
+        <main class="rooms-list" id="rooms-list">
+            <!-- Conteúdo populado por app.js a partir do evento RoomsList -->
+        </main>
+
+        <p class="menu-hint" id="join-hint">
+            O multiplayer ainda não está habilitado — esta tela está pronta para receber salas reais quando o recurso entrar.
+        </p>
+    </div>
+</div>
+
+<!-- ===================== LOBBY (criação de corrida) ===================== -->
 <div id="lobby" class="hidden">
     <div class="lobby-container">
 
         <aside class="lobby-settings">
-            <h2 class="neon-title">OUTRUN</h2>
+            <div class="lobby-settings-header">
+                <button class="btn-back" id="btn-lobby-back" title="Voltar ao menu">←</button>
+                <h2 class="neon-title small">OUTRUN</h2>
+            </div>
 
             <div class="field-group">
                 <label>Meta de Pontos</label>
@@ -64,13 +114,14 @@
         </aside>
 
         <main class="lobby-participants">
+            <h3 class="section-title">PARTICIPANTES</h3>
             <div id="participant-list"></div>
         </main>
 
         <footer class="lobby-footer">
             <button class="btn-ready" id="btn-ready">PRONTO</button>
             <button class="btn-start" id="btn-start" disabled>INICIAR CORRIDA</button>
-            <button class="btn-close" id="btn-close">✕</button>
+            <button class="btn-close" id="btn-close" title="Fechar HUD">✕</button>
         </footer>
 
     </div>

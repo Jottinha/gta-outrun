@@ -22,6 +22,7 @@ end
 -- (Lobby foi pré-declarado em nui_bridge.lua)
 -- ============================================================
 
+-- "Criar Corrida" no main-menu: cria a sala no server.
 function Lobby.create(data)
     TriggerServerEvent(SE.CREATE_LOBBY, tonumber(data.pointTarget) or Config.DefaultPointTarget)
 end
@@ -44,13 +45,42 @@ function Lobby.startRace()
     TriggerServerEvent(SE.START_RACE)
 end
 
-function Lobby.close()
+-- "Voltar" no lobby: cancela a sala no server (se host) ou sai (se participante)
+-- e volta para o main-menu. NÃO fecha a NUI.
+function Lobby.leave()
+    if hasActiveLobby then
+        TriggerServerEvent(SE.LEAVE_LOBBY)
+        hasActiveLobby = false
+    end
+end
+
+-- "X" / FECHAR: encerra a NUI inteiramente.
+function Lobby.closeMenu()
+    if hasActiveLobby then
+        TriggerServerEvent(SE.LEAVE_LOBBY)
+        hasActiveLobby = false
+    end
     Nui.setFocus(false)
-    Nui.send('hideLobby', {})
+    Nui.send('hideMenus', {})
 end
 
 function Lobby.setTraffic(data)
     trafficEnabled = data.on == true
+end
+
+-- "Entrar em Corrida": pede a lista de salas ao server. Resposta vem em
+-- CE.ROOMS_LIST e é repassada à NUI como `roomsList`.
+function Lobby.refreshRooms()
+    TriggerServerEvent(SE.REQUEST_ROOMS_LIST)
+end
+
+-- Tentativa de entrar em sala alheia. Hoje o server ainda não tem a lógica
+-- de "addParticipant", então registramos a intenção e avisamos o jogador.
+-- Quando o multiplayer entrar, basta substituir esta função por um
+-- TriggerServerEvent específico (ex.: SE.JOIN_ROOM).
+function Lobby.joinRoom(data)
+    notify(("Multiplayer ainda não implementado — sala #%s será habilitada quando o recurso entrar."):format(
+        tostring(data.roomId or "?")))
 end
 
 
@@ -59,11 +89,13 @@ end
 -- ============================================================
 
 RegisterCommand('outrun', function()
+    Nui.setFocus(true)
     if hasActiveLobby then
+        -- Já participa de uma sala: tenta restaurar o estado pelo server.
+        -- Server responde com LOBBY_CREATED (mostra lobby) ou NO_ACTIVE_LOBBY (volta main).
         TriggerServerEvent(SE.REQUEST_LOBBY_STATE)
     else
-        Nui.setFocus(true)
-        Nui.send('openLobby', { hasLobby = false })
+        Nui.send('openMenu', {})
     end
 end, false)
 
@@ -100,11 +132,15 @@ end)
 RegisterNetEvent(CE.NO_ACTIVE_LOBBY, function()
     hasActiveLobby = false
     Nui.setFocus(true)
-    Nui.send('openLobby', { hasLobby = false })
+    Nui.send('openMenu', {})
 end)
 
 RegisterNetEvent(CE.LOBBY_UPDATED, function(room)
     Nui.send('lobbyUpdated', { room = room })
+end)
+
+RegisterNetEvent(CE.ROOMS_LIST, function(rooms)
+    Nui.send('roomsList', { rooms = rooms or {} })
 end)
 
 RegisterNetEvent(CE.LEADER_CHANGED, function(leaderId)
@@ -148,13 +184,13 @@ RegisterNetEvent(CE.FORCE_LOBBY_CLOSE, function()
     hasActiveLobby = false
     RaceState.reset()
     Nui.setFocus(false)
-    Nui.send('hideLobby', {})
+    Nui.send('hideMenus', {})
     notify("A sala foi encerrada.")
 end)
 
 RegisterNetEvent(CE.SPAWN_VEHICLES, function(payload)
     Nui.setFocus(false)
-    Nui.send('hideLobby', {})
+    Nui.send('hideMenus', {})
     RaceOrchestrator.beginRound(payload)
 end)
 

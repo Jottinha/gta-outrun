@@ -227,6 +227,8 @@ Config.Events = {
         ROUND_END           = "outrun:server:RoundEnd",
         RACE_STARTED        = "outrun:server:RaceStarted",
         PLAYER_ELIMINATED   = "outrun:server:PlayerEliminated",
+        LEAVE_LOBBY         = "outrun:server:LeaveLobby",
+        REQUEST_ROOMS_LIST  = "outrun:server:RequestRoomsList",
     },
 
     Client = {
@@ -237,6 +239,7 @@ Config.Events = {
         NOTIFY             = "outrun:client:Notify",
         SPAWN_VEHICLES     = "outrun:client:SpawnVehicles",
         BE_SPECTATOR       = "outrun:client:BeSpectator",
+        ROOMS_LIST         = "outrun:client:RoomsList",
         LEADER_CHANGED     = "outrun:client:LeaderChanged",
         CLEAR_WANTED       = "outrun:client:ClearWanted",
         ROUND_RESULT       = "outrun:client:RoundResult",

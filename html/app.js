@@ -1,9 +1,25 @@
 'use strict';
 
+// ============================================================ State + helpers
+
 const State = { selectedPts: 50, isReady: false, trafficOn: true, isLeader: false };
+
 const $    = (id) => document.getElementById(id);
 const show = (id) => $(id).classList.remove('hidden');
 const hide = (id) => $(id).classList.add('hidden');
+
+// Telas mutuamente exclusivas: showScreen garante que apenas uma fica visível.
+// HUD/countdown/result/end-screen NÃO são "telas" no sentido de menu — eles
+// se sobrepõem em momentos específicos da partida e são controlados em separado.
+const MENU_SCREENS = ['main-menu', 'join-menu', 'lobby'];
+
+function showScreen(id) {
+    MENU_SCREENS.forEach(s => (s === id ? show(s) : hide(s)));
+}
+
+function hideAllMenus() {
+    MENU_SCREENS.forEach(hide);
+}
 
 function postNUI(action, data = {}) {
     fetch(`https://outrun/${action}`, {
@@ -12,14 +28,77 @@ function postNUI(action, data = {}) {
     }).catch(() => {});
 }
 
+// ============================================================ Main menu
+
+function setupMainMenu() {
+    $('card-create').addEventListener('click', () => {
+        postNUI('openCreate', { pointTarget: State.selectedPts });
+    });
+
+    $('card-join').addEventListener('click', () => {
+        showScreen('join-menu');
+        postNUI('refreshRooms');
+    });
+
+    $('btn-menu-close').addEventListener('click', () => {
+        hideAllMenus();
+        postNUI('closeMenu');
+    });
+}
+
+// ============================================================ Join menu
+
+function setupJoinMenu() {
+    $('btn-join-back').addEventListener('click', () => {
+        showScreen('main-menu');
+    });
+
+    $('btn-join-refresh').addEventListener('click', () => {
+        postNUI('refreshRooms');
+        renderRoomsList(null); // estado "carregando"
+    });
+}
+
+function renderRoomsList(rooms) {
+    const container = $('rooms-list');
+
+    if (rooms === null) {
+        container.innerHTML = `<div class="rooms-empty">Atualizando…</div>`;
+        return;
+    }
+
+    if (!rooms || rooms.length === 0) {
+        container.innerHTML = `<div class="rooms-empty">Nenhuma sala disponível no momento.</div>`;
+        return;
+    }
+
+    container.innerHTML = rooms.map(r => `
+        <div class="room-card" data-room-id="${r.id}">
+            <div>
+                <div class="room-card-host">${r.hostName || ('Sala #' + r.id)}</div>
+                <div class="room-card-meta">${r.humans} jogador(es) · ${r.npcs} NPC(s)</div>
+            </div>
+            <div class="room-card-target">${r.pointTarget} pts</div>
+            <div class="room-card-cta">ENTRAR ›</div>
+        </div>
+    `).join('');
+
+    container.querySelectorAll('.room-card').forEach(el => {
+        el.addEventListener('click', () => {
+            const id = parseInt(el.dataset.roomId, 10);
+            postNUI('joinRoom', { roomId: id });
+        });
+    });
+}
+
 // ============================================================ Lobby
 
 function setupLobby() {
-    document.querySelectorAll('.btn-option').forEach(btn => {
+    document.querySelectorAll('#point-targets .btn-option').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.btn-option').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#point-targets .btn-option').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            State.selectedPts = parseInt(btn.dataset.pts);
+            State.selectedPts = parseInt(btn.dataset.pts, 10);
         });
     });
 
@@ -27,7 +106,6 @@ function setupLobby() {
         postNUI('addNPC', { model: $('npc-model').value, personality: $('npc-personality').value });
     });
 
-    // Troca de carro do próprio jogador
     $('my-car').addEventListener('change', () => {
         postNUI('setMyCar', { model: $('my-car').value });
     });
@@ -47,7 +125,18 @@ function setupLobby() {
     });
 
     $('btn-start').addEventListener('click', () => postNUI('startRace'));
-    $('btn-close').addEventListener('click', () => postNUI('closeLobby'));
+
+    // "Voltar" volta ao main-menu e avisa o server para encerrar/sair da sala.
+    $('btn-lobby-back').addEventListener('click', () => {
+        postNUI('leaveLobby');
+        showScreen('main-menu');
+    });
+
+    // "X" fecha tudo (mantém comportamento anterior).
+    $('btn-close').addEventListener('click', () => {
+        hideAllMenus();
+        postNUI('closeMenu');
+    });
 }
 
 function renderParticipants(participants) {
@@ -66,7 +155,6 @@ function renderParticipants(participants) {
 
     $('btn-start').disabled = !allReady;
 
-    // Sincroniza dropdown "Meu Carro" com o modelo atual do jogador
     const me = participants.find(p => !p.isNPC);
     if (me && me.model) {
         const sel = $('my-car');
@@ -131,7 +219,9 @@ function playLeaderSwoosh() {
 // ============================================================ Countdown
 
 function showCountdown({ isBonusRound }) {
-    hide('lobby'); hide('round-result'); show('countdown');
+    hideAllMenus();
+    hide('round-result');
+    show('countdown');
     $('countdown-bonus').classList.toggle('hidden', !isBonusRound);
 }
 
@@ -182,21 +272,29 @@ function showEndScreen({ champion, scores, names }) {
 
     $('btn-close-end').addEventListener('click', () => {
         hide('end-screen');
-        postNUI('closeLobby');
+        postNUI('closeMenu');
     }, { once: true });
 }
 
-// ============================================================ NUI Handler
+// ============================================================ NUI message handler
 
 window.addEventListener('message', ({ data: { action, data } }) => {
     switch (action) {
-        case 'openLobby':
-            show('lobby');
-            if (!data.hasLobby) postNUI('createLobby', { pointTarget: State.selectedPts });
-            break;
-        case 'hideLobby':      hide('lobby'); break;
-        case 'lobbyCreated':   show('lobby'); renderParticipants(data.room.participants||[]); break;
+        // Navegação de menus
+        case 'openMenu':       showScreen('main-menu'); break;
+        case 'showLobby':      showScreen('lobby');     break;
+        case 'hideMenus':      hideAllMenus();          break;
+
+        // Compatibilidade legada (algumas chamadas antigas ainda enviam isso)
+        case 'openLobby':      showScreen('lobby');     break;
+        case 'hideLobby':      hideAllMenus();          break;
+
+        // Dados de salas
+        case 'lobbyCreated':   showScreen('lobby'); renderParticipants(data.room.participants||[]); break;
         case 'lobbyUpdated':   renderParticipants(data.room.participants||[]); break;
+        case 'roomsList':      renderRoomsList(data.rooms||[]); break;
+
+        // Corrida em andamento
         case 'showCountdown':  showCountdown(data); break;
         case 'countdownTick':  countdownTick(data); break;
         case 'countdownGo':    countdownGo(); break;
@@ -209,4 +307,8 @@ window.addEventListener('message', ({ data: { action, data } }) => {
     }
 });
 
-document.addEventListener('DOMContentLoaded', setupLobby);
+document.addEventListener('DOMContentLoaded', () => {
+    setupMainMenu();
+    setupJoinMenu();
+    setupLobby();
+});
