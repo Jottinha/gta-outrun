@@ -107,16 +107,23 @@ local function normalizeForward(s, minMagnitude)
 end
 
 -- Direção de corrida (race direction):
---   1) se o carro está acima de MIN_SPEED_FOR_VELOCITY_FWD, usamos o vetor
---      de VELOCIDADE — robusto a capotamento, rotação 180°, loop apertado.
---   2) senão, usamos o forward visual normalizado (fallback tradicional).
+--   1) se o carro está acima de MIN_SPEED_FOR_VELOCITY_FWD E a velocidade
+--      está alinhada com o forward visual (dot ≥ 0), usamos o vetor de
+--      VELOCIDADE — robusto a capotamento e loop apertado.
+--   2) se dot < 0 (carro em ré: velocity aponta para trás do corpo), usamos
+--      o forward visual — a frente do carro é sempre a referência certa.
 --   3) se nada estiver utilizável, retorna nil — caller cai em cache/fallback.
 -- Exposta como OvertakeCore.resolveDirection para o módulo de debug visual
 -- consumir a MESMA matemática que o tick usa (single source of truth).
 function OvertakeCore.resolveDirection(s, cfg)
     local minVelFwd = cfg.MIN_SPEED_FOR_VELOCITY_FWD or 5.0
     if s.speed and s.speed >= minVelFwd and s.vx and s.vy then
-        return s.vx / s.speed, s.vy / s.speed
+        -- dot(velocity, forward): positivo = andando pra frente, negativo = ré
+        local dot = s.vx * (s.fx or 0) + s.vy * (s.fy or 0)
+        if dot >= 0 then
+            return s.vx / s.speed, s.vy / s.speed
+        end
+        -- Em ré: cai para forward visual (aponta sempre à frente do carro)
     end
     return normalizeForward(s, cfg.FORWARD_MIN_MAGNITUDE)
 end
