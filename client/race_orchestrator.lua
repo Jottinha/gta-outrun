@@ -24,6 +24,35 @@ local spawnedVehicles = {}
 local roundEnded      = false
 
 
+-- ===== Helper: blips dos chasers para o líder =====
+
+local function updateChaserBlipsFromStandings(standings)
+    local myId   = GetPlayerServerId(PlayerId())
+    if myId ~= RaceState.leaderId then
+        ChaserBlips.clear()
+        return
+    end
+    local chasers = {}
+    for _, entry in ipairs(standings) do
+        if not entry.isLeader and not entry.eliminated then
+            local veh = entry.vehicle
+            if (not veh or not DoesEntityExist(veh)) then
+                local p = RaceState.findParticipant(entry.id)
+                if p and p.netId then
+                    veh = NetToVeh(p.netId)
+                    if DoesEntityExist(veh) then p.vehicle = veh end
+                end
+            end
+            if veh and DoesEntityExist(veh) then
+                chasers[#chasers + 1] = veh
+            end
+        end
+        if #chasers >= 3 then break end
+    end
+    ChaserBlips.update(chasers)
+end
+
+
 -- ===== Accessors usados pelos loops (solo) =====
 
 local function getLeaderVeh()    return RaceState.leaderVeh    end
@@ -169,6 +198,7 @@ local function endRound(standings)
     RaceLogic.StopLoop()
     AIController.StopLoop()
     LeaderBlip.clear()
+    ChaserBlips.clear()
     local results = RaceState.buildRoundResults(standings)
     TriggerServerEvent(SE.ROUND_END, results)
 end
@@ -188,6 +218,7 @@ function RaceOrchestrator.onTick(result)
     RaceState.topChasers  = pickTopChasers(standings, Config.Race.EVADE_CHASERS_CONSIDERED)
 
     updateLocalHUD(standings, result.runnerUp)
+    updateChaserBlipsFromStandings(standings)
 
     if not RaceState.isHost or roundEnded or result.skipped then return end
 
@@ -208,6 +239,7 @@ end
 function RaceOrchestrator.beginRound(payload)
     RaceOrchestrator.cleanupVehicles()
     LeaderBlip.clear()
+    ChaserBlips.clear()
 
     AIController.UnregisterAll()
     RaceState.participants     = {}
@@ -231,6 +263,7 @@ end
 function RaceOrchestrator.beginRoundMP(payload)
     RaceOrchestrator.cleanupVehicles()
     LeaderBlip.clear()
+    ChaserBlips.clear()
 
     RaceState.participants     = {}
     RaceState.eliminationOrder = {}
@@ -336,6 +369,8 @@ function RaceOrchestrator.onStandingsUpdate(data)
         end
     end
 
+    updateChaserBlipsFromStandings(standings)
+
     -- Top chasers (sem IA em MP, mas mantém para LeaderBlip via spectator)
     RaceState.topChasers = {}
     for _, entry in ipairs(standings) do
@@ -392,6 +427,7 @@ function RaceOrchestrator.onStandingsUpdate(data)
         RaceState.active = false
         RaceLogic.StopLoop()
         LeaderBlip.clear()
+        ChaserBlips.clear()
     end
 end
 
@@ -414,6 +450,7 @@ function RaceOrchestrator.endSession()
     RaceLogic.StopLoop()
     AIController.StopLoop()
     LeaderBlip.clear()
+    ChaserBlips.clear()
 
     AIController.UnregisterAll()
     Spectator.Stop()
