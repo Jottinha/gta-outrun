@@ -10,6 +10,21 @@ Rooms = {}
 local rooms = {}
 local nextRoomId = 1
 
+local QBCore = exports['qb-core']:GetCoreObject()
+
+local function getCharacterName(src)
+    local player = QBCore.Functions.GetPlayer(src)
+    if player and player.PlayerData and player.PlayerData.charinfo then
+        local ci = player.PlayerData.charinfo
+        local first = ci.firstname or ""
+        local last  = ci.lastname  or ""
+        if #first > 0 or #last > 0 then
+            return (first .. " " .. last):gsub("^%s+", ""):gsub("%s+$", "")
+        end
+    end
+    return GetPlayerName(src) or ("Jogador " .. tostring(src))
+end
+
 
 -- ===== Helpers internos =====
 
@@ -138,7 +153,7 @@ function Rooms.buildNames(room)
         if p.isNPC then
             names[p.source] = "Bot (" .. (p.model or "NPC") .. ")"
         else
-            names[p.source] = GetPlayerName(p.source) or ("Jogador " .. tostring(p.source))
+            names[p.source] = getCharacterName(p.source)
         end
     end
     return names
@@ -256,7 +271,7 @@ function Rooms.buildNetIdMap(room)
             map[tostring(p.source)] = {
                 netId       = p.netId,
                 model       = p.model,
-                displayName = GetPlayerName(p.source) or ("Jogador " .. tostring(p.source)),
+                displayName = getCharacterName(p.source),
             }
         end
     end
@@ -283,7 +298,7 @@ function Rooms.toLobbyPayload(room)
             ready       = p.ready,
             model       = p.model,
             personality = p.personality,
-            name        = p.isNPC and nil or (GetPlayerName(p.source) or ("Jogador " .. tostring(p.source))),
+            name        = p.isNPC and nil or (getCharacterName(p.source)),
         }
     end
     return {
@@ -309,7 +324,7 @@ function Rooms.list()
             end
             out[#out + 1] = {
                 id          = room.id,
-                hostName    = GetPlayerName(room.host) or ("Host " .. tostring(room.host)),
+                hostName    = getCharacterName(room.host),
                 pointTarget = room.pointTarget,
                 humans      = humans,
                 npcs        = npcs,
