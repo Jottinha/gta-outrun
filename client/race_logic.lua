@@ -31,6 +31,7 @@ local function makeCfg()
         PASS_DISTANCE_HARD           = Config.Race.LEADER_PASS_DISTANCE_HARD,
         OVERRIDE_DISTANCE            = Config.Race.LEADER_OVERRIDE_DISTANCE,
         MAX_Z_DIFF                   = Config.Race.LEADER_MAX_Z_DIFF,
+        PASS_MAX_DISTANCE            = Config.Race.LEADER_PASS_MAX_DISTANCE,
         -- Filtros do candidato
         MIN_SPEED_FOR_PASS           = Config.Race.LEADER_MIN_SPEED_FOR_PASS,
         MIN_ALIGNMENT                = Config.Race.LEADER_MIN_ALIGNMENT,

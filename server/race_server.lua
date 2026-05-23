@@ -40,6 +40,7 @@ local function makeCfg()
         MIN_SPEED_FOR_VELOCITY_FWD   = Config.Race.LEADER_MIN_SPEED_FOR_VELOCITY_FWD,
         FORWARD_MIN_MAGNITUDE        = Config.Race.FORWARD_MIN_MAGNITUDE,
         FORWARD_CACHE_MAX_AGE_TICKS  = Config.Race.FORWARD_CACHE_MAX_AGE_TICKS,
+        PASS_MAX_DISTANCE            = Config.Race.LEADER_PASS_MAX_DISTANCE,
     }
 end
 

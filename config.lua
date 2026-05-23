@@ -43,6 +43,8 @@ Config.Race = {
     LEADER_PASS_DISTANCE_HARD  = 10.0,
     LEADER_OVERRIDE_DISTANCE   = 15.0,  -- durante cooldown, só HARD com >=15m passa
     LEADER_MAX_Z_DIFF          = 8.0,
+    -- Teto longitudinal: candidato além desse valor é ignorado mesmo estando "à frente".
+    LEADER_PASS_MAX_DISTANCE   = 25.0,
 
     -- ─── Filtros do candidato (anti carro parado / atravessado / contramão) ─
     -- Velocidade mínima do candidato para ser considerado ultrapassador.

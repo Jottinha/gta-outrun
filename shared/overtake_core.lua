@@ -176,11 +176,11 @@ local function findPendingCandidate(active, anchor, fx, fy, cfg)
     local nearLat      = cfg.NEAR_LATERAL         or 3.0
     local passNear     = cfg.PASS_DISTANCE_NEAR   or 2.0
     local passFar      = cfg.PASS_DISTANCE        or 4.0
+    local passMax      = cfg.PASS_MAX_DISTANCE    or math.huge
     local maxZ         = cfg.MAX_Z_DIFF           or 8.0
     local minSpeed     = cfg.MIN_SPEED_FOR_PASS   or 2.0
     local minAlignment = cfg.MIN_ALIGNMENT        or 0.25
     local fwdMinMag2   = (cfg.FORWARD_MIN_MAGNITUDE or 0.2) ^ 2
-
     local best = nil
     for _, s in ipairs(active) do
         if s.id ~= anchor.id then
@@ -189,6 +189,7 @@ local function findPendingCandidate(active, anchor, fx, fy, cfg)
 
             local passes = lateral <= maxLat
                 and longitudinal > needed
+                and longitudinal <= passMax
                 and dz <= maxZ
                 and (not s.speed or s.speed >= minSpeed)
 
