@@ -193,6 +193,7 @@ function renderParticipants(participants, isHost) {
 // ============================================================ Leader takeover
 
 let leaderTakeoverTimer = null;
+let leaderLoseTimer    = null;
 let _wasLeader = false;
 
 function showLeaderTakeover() {
@@ -200,7 +201,6 @@ function showLeaderTakeover() {
     if (!el) return;
     if (leaderTakeoverTimer) { clearTimeout(leaderTakeoverTimer); leaderTakeoverTimer = null; }
     el.classList.remove('hidden');
-    // Força restart da animação independente do estado anterior
     const txt = el.querySelector('.takeover-text');
     if (txt) {
         txt.style.animation = 'none';
@@ -213,12 +213,30 @@ function showLeaderTakeover() {
     }, 1000);
 }
 
+function showLeaderLose() {
+    const el = $('leader-lose');
+    if (!el) return;
+    if (leaderLoseTimer) { clearTimeout(leaderLoseTimer); leaderLoseTimer = null; }
+    el.classList.remove('hidden');
+    const txt = el.querySelector('.lose-text');
+    if (txt) {
+        txt.style.animation = 'none';
+        void txt.offsetWidth;
+        txt.style.animation = 'takeoverPop 1s ease-out forwards';
+    }
+    leaderLoseTimer = setTimeout(() => {
+        el.classList.add('hidden');
+        leaderLoseTimer = null;
+    }, 1000);
+}
+
 // ============================================================ HUD
 
 let dangerPlaying = false;
 
 function updateHUD({ isLeader, dist, maxDist, position }) {
-    if (isLeader && !_wasLeader) showLeaderTakeover();
+    if (isLeader && !_wasLeader)  showLeaderTakeover();
+    if (!isLeader && _wasLeader)  showLeaderLose();
     _wasLeader = isLeader;
     State.isLeader = isLeader;
     const fill    = $('hud-bar-fill');

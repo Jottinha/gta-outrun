@@ -106,3 +106,4 @@ end
 function LeaderBlip.hasTarget()
     return currentBlip ~= nil and DoesBlipExist(currentBlip)
 end
+
