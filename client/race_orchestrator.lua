@@ -116,6 +116,8 @@ local function launch(bonus)
     RaceState.eliminated       = false
     RaceState.eliminationOrder = {}
 
+    SetEntityInvincible(PlayerPedId(), true)
+
     for _, veh in ipairs(spawnedVehicles) do
         FreezeEntityPosition(veh, false)
         SetVehicleEngineOn(veh, true, true, false)
@@ -197,6 +199,7 @@ end
 local function endRound(standings)
     RaceState.active = false
     roundEnded = true
+    SetEntityInvincible(PlayerPedId(), false)
     RaceLogic.StopLoop()
     AIController.StopLoop()
     LeaderBlip.clear()
@@ -323,6 +326,7 @@ function RaceOrchestrator.onRaceStartMP()
     roundEnded = false
     RaceState.eliminated = false
     RaceState.active     = true
+    SetEntityInvincible(PlayerPedId(), true)
 
     if RaceState.myVehicle then
         FreezeEntityPosition(RaceState.myVehicle, false)
@@ -428,6 +432,7 @@ function RaceOrchestrator.onStandingsUpdate(data)
     if data.winConfirmed and not roundEnded then
         roundEnded = true
         RaceState.active = false
+        SetEntityInvincible(PlayerPedId(), false)
         RaceLogic.StopLoop()
         LeaderBlip.clear()
         ChaserBlips.clear()
@@ -450,6 +455,7 @@ end
 function RaceOrchestrator.endSession()
     RaceState.active = false
     roundEnded = true
+    SetEntityInvincible(PlayerPedId(), false)
     RaceLogic.StopLoop()
     AIController.StopLoop()
     LeaderBlip.clear()
