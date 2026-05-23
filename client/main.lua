@@ -99,7 +99,7 @@ RegisterCommand('outrun', function()
     end
 end, false)
 
-RegisterKeyMapping('outrun', 'Ativar/Desativar Outrun', 'keyboard', '=')
+RegisterKeyMapping('outrun', 'Ativar/Desativar Outrun', 'keyboard', 'o')
 
 
 -- ============================================================

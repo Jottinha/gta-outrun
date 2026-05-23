@@ -50,7 +50,6 @@ local function destroyBlip()
 end
 
 local function applyBlipStyle(blip)
-    
     SetBlipSprite(blip, config.sprite)
     SetBlipColour(blip, config.colour)
     SetBlipScale(blip, config.scale)
@@ -94,6 +93,10 @@ function LeaderBlip.setTarget(vehicle)
     end
 
     applyBlipStyle(blip)
+    
+    -- [NOVO] Aplica a rotação inicial no momento em que o blip é criado
+    SetBlipRotation(blip, math.ceil(GetEntityHeading(vehicle)))
+
     currentBlip    = blip
     currentVehicle = vehicle
 end
@@ -108,3 +111,21 @@ function LeaderBlip.hasTarget()
     return currentBlip ~= nil and DoesBlipExist(currentBlip)
 end
 
+
+-- ------------------------------------------------------------
+-- Thread de Rotação em Tempo Real do Líder
+-- ------------------------------------------------------------
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(50) -- Intervalo curto para a rotação ser suave
+
+        -- Verifica se o veículo e o blip do líder existem atualmente
+        if currentVehicle and DoesEntityExist(currentVehicle) and currentBlip and DoesBlipExist(currentBlip) then
+            local heading = GetEntityHeading(currentVehicle)
+            SetBlipRotation(currentBlip, math.ceil(heading))
+        else
+            -- Se não houver líder sendo rastreado, espera mais tempo para poupar processamento
+            Citizen.Wait(500)
+        end
+    end
+end)
