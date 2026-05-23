@@ -202,3 +202,4 @@ RegisterCommand("outrun_debug", function()
     local msg = now and "[OUTRUN] Debug visual ON" or "[OUTRUN] Debug visual OFF"
     TriggerEvent('QBCore:Notify', msg, now and 'success' or 'primary')
 end, false)
+RegisterKeyMapping('outrun_debug', 'Ativar/Desativar Debug Outrun', 'keyboard', 'k')

@@ -19,7 +19,7 @@ LeaderBlip = {}
 
 local config = {
     -- Aparência do blip
-    sprite       = 225,    -- carro genérico (visível, distinto do default)
+    sprite       = 6,    -- carro genérico (visível, distinto do default)
     colour       = 1,      -- vermelho (objetivo/perseguição)
     scale        = 1.0,
     name         = "Líder",
@@ -50,6 +50,7 @@ local function destroyBlip()
 end
 
 local function applyBlipStyle(blip)
+    
     SetBlipSprite(blip, config.sprite)
     SetBlipColour(blip, config.colour)
     SetBlipScale(blip, config.scale)

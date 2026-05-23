@@ -99,6 +99,8 @@ RegisterCommand('outrun', function()
     end
 end, false)
 
+RegisterKeyMapping('outrun', 'Ativar/Desativar Outrun', 'keyboard', '=')
+
 
 -- ============================================================
 -- Thread de tráfego

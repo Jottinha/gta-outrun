@@ -29,8 +29,9 @@ local blips = {}
 -- ------------------------------------------------------------
 
 local function destroyAll()
-    for _, blip in ipairs(blips) do
-        if DoesBlipExist(blip) then RemoveBlip(blip) end
+    for _, b in ipairs(blips) do
+        -- Adicionado o ".id" para pegar apenas o número do blip salvo na tabela
+        if DoesBlipExist(b.id) then RemoveBlip(b.id) end
     end
     blips = {}
 end
@@ -41,7 +42,7 @@ local function makeBlip(vehicle, slot)
     local blip = AddBlipForEntity(vehicle)
     if blip == 0 or not DoesBlipExist(blip) then return nil end
 
-    SetBlipSprite(blip, 225)
+    SetBlipSprite(blip, 6)
     SetBlipColour(blip, cfg.colour)
     SetBlipScale(blip, 0.85)
     SetBlipDisplay(blip, 2)
@@ -51,6 +52,7 @@ local function makeBlip(vehicle, slot)
     AddTextComponentSubstringPlayerName(cfg.name)
     EndTextCommandSetBlipName(blip)
 
+    SetBlipRotation(blip, math.ceil(GetEntityHeading(vehicle)))
     return blip
 end
 
@@ -62,11 +64,34 @@ end
 function ChaserBlips.update(chasers)
     destroyAll()
     for i = 1, math.min(#chasers, MAX_CHASERS) do
-        local blip = makeBlip(chasers[i], i)
-        if blip then blips[#blips + 1] = blip end
+        local veh = chasers[i]
+        local blip = makeBlip(veh, i)
+        if blip then 
+            -- Salva tanto o ID do blip quanto a entidade do veículo
+            blips[#blips + 1] = { id = blip, vehicle = veh } 
+        end
     end
 end
 
 function ChaserBlips.clear()
     destroyAll()
 end
+
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(50) -- Intervalo curto para a rotação ser suave no minimapa
+
+        if #blips > 0 then
+            for _, b in ipairs(blips) do
+                -- Garante que o carro e o blip ainda existem antes de atualizar
+                if DoesEntityExist(b.vehicle) and DoesBlipExist(b.id) then
+                    local heading = GetEntityHeading(b.vehicle)
+                    SetBlipRotation(b.id, math.ceil(heading))
+                end
+            end
+        else
+            -- Se a lista estiver vazia, estende o Wait para poupar processamento
+            Citizen.Wait(500)
+        end
+    end
+end)

@@ -15,7 +15,7 @@ Config = {}
 -- ============================================================
 
 Config.Debug = {
-    ENABLED    = true,
+    ENABLED    = false,
     LOG_PREFIX = "[OUTRUN]",
 }
 
