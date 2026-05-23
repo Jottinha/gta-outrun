@@ -232,7 +232,8 @@ function showLeaderLose() {
 
 // ============================================================ HUD
 
-let dangerPlaying = false;
+let dangerPlaying  = false;
+let _lastLeaderDist = 0;
 
 function updateHUD({ isLeader, dist, maxDist, position }) {
     if (isLeader && !_wasLeader)  showLeaderTakeover();
@@ -240,8 +241,17 @@ function updateHUD({ isLeader, dist, maxDist, position }) {
     _wasLeader = isLeader;
     State.isLeader = isLeader;
     const fill    = $('hud-bar-fill');
-    const hasDist = typeof dist === 'number';
-    const percent = hasDist ? Math.min(dist / maxDist, 1.0) : 0;
+
+    // Quando líder sem runner-up (curva brusca desaparece momentaneamente),
+    // mantém o último valor conhecido em vez de zerar a barra.
+    let effectiveDist = dist;
+    if (isLeader) {
+        if (typeof dist === 'number') _lastLeaderDist = dist;
+        else effectiveDist = _lastLeaderDist;
+    }
+
+    const hasDist = typeof effectiveDist === 'number';
+    const percent = hasDist ? Math.min(effectiveDist / maxDist, 1.0) : 0;
 
     fill.style.width = (percent * 100).toFixed(1) + '%';
 
