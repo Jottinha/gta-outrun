@@ -179,8 +179,25 @@ RegisterNetEvent(CE.CLEAR_WANTED, function()
     SetPoliceIgnorePlayer(PlayerId(), false)
 end)
 
+-- Lua tabelas com chaves numéricas sequenciais ({[1]=..., [2]=...}) são
+-- serializadas como JSON ARRAY pelo SendNUIMessage. Isso destrói o
+-- mapeamento id→valor (player id 2 vira índice 1 = wrong). Forçar chaves
+-- string preserva o mapa original quando vira JSON object no JS.
+local function stringKeys(t)
+    if type(t) ~= 'table' then return t end
+    local out = {}
+    for k, v in pairs(t) do
+        out[tostring(k)] = v
+    end
+    return out
+end
+
 RegisterNetEvent(CE.ROUND_RESULT, function(results, scores, names)
-    Nui.send('roundResult', { results = results, scores = scores, names = names })
+    Nui.send('roundResult', {
+        results = results,
+        scores  = stringKeys(scores),
+        names   = stringKeys(names),
+    })
 end)
 
 RegisterNetEvent(CE.SHOW_END_SCREEN, function(champion, scores, names)
@@ -193,7 +210,11 @@ RegisterNetEvent(CE.SHOW_END_SCREEN, function(champion, scores, names)
     ChaserBlips.clear()
 
     Nui.setFocus(true)
-    Nui.send('endScreen', { champion = champion, scores = scores, names = names })
+    Nui.send('endScreen', {
+        champion = tostring(champion),
+        scores   = stringKeys(scores),
+        names    = stringKeys(names),
+    })
 end)
 
 RegisterNetEvent(CE.NOTIFY, function(msg)

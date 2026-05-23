@@ -287,13 +287,19 @@ local function buildFallbackStandings(active, leader)
 end
 
 -- Devolve o primeiro entry com longitudinal < 0 (verdadeiro 2º colocado).
+-- Fallback: se TODOS os não-líderes estão marcados `ahead` (acontece em
+-- curvas fechadas quando o forward do líder gira e projeta perseguidores
+-- com longitudinal > 0), devolve o primeiro não-líder mesmo assim. Sem
+-- fallback, HUD e win-check perdem o runner-up intermitentemente em curvas.
 local function findTrailingRunnerUp(standings)
+    local fallback = nil
     for _, e in ipairs(standings) do
-        if not e.isLeader and not e.ahead then
-            return e
+        if not e.isLeader then
+            if not e.ahead then return e end
+            if not fallback then fallback = e end
         end
     end
-    return nil
+    return fallback
 end
 
 local function collectEliminations(standings, cfg)
@@ -502,16 +508,26 @@ function OvertakeCore.tick(state, snapshots, cfg)
     local eliminations = collectEliminations(standings, cfg)
 
     -- 7) Histerese de vitória (gap precisa persistir WIN_CONFIRM_TICKS).
+    -- Usa max(-longitudinal, dist) como gap: -longitudinal é o "atraso
+    -- pela pista" quando runner-up está trailing, mas em curvas pode ser
+    -- negativo (projeção inverte). dist 2D pura é robusta a isso. Pegar
+    -- o maior dos dois evita que curvas atrasem a confirmação de vitória
+    -- legítima, sem perder a semântica de "distância ao longo da pista".
     local winConfirmed = false
     if #standings == 1 then
         state.winTicks = state.winTicks + 1
         if state.winTicks >= cfg.WIN_CONFIRM_TICKS then
             winConfirmed = true
         end
-    elseif runnerUp and (-runnerUp.longitudinal) >= cfg.WIN_DISTANCE then
-        state.winTicks = state.winTicks + 1
-        if state.winTicks >= cfg.WIN_CONFIRM_TICKS then
-            winConfirmed = true
+    elseif runnerUp then
+        local gap = math.max(-(runnerUp.longitudinal or 0), runnerUp.dist or 0)
+        if gap >= cfg.WIN_DISTANCE then
+            state.winTicks = state.winTicks + 1
+            if state.winTicks >= cfg.WIN_CONFIRM_TICKS then
+                winConfirmed = true
+            end
+        else
+            state.winTicks = 0
         end
     else
         state.winTicks = 0
