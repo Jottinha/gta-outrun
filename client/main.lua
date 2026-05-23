@@ -166,6 +166,7 @@ RegisterNetEvent(CE.LOBBY_CREATED, function(roomId, room, isHostOverride)
     Nui.send('lobbyCreated', {
         roomId = roomId, room = room, isHost = isHost, mySrc = myId,
         vehicleConfig = buildVehicleConfig(),
+        trafficOn     = trafficEnabled,
     })
 end)
 

@@ -31,10 +31,19 @@ function postNUI(action, data = {}) {
     }).catch(() => {});
 }
 
+function syncTrafficButton(on) {
+    State.trafficOn = on;
+    const btn = $('btn-traffic');
+    if (!btn) return;
+    btn.textContent = on ? 'ON' : 'OFF';
+    btn.classList.toggle('off', !on);
+}
+
 function setHostUI(isHost) {
     State.isHost = isHost;
-    const hostEls = ['btn-start', 'btn-traffic'];
+    const hostEls = ['btn-start'];
     hostEls.forEach(id => isHost ? show(id) : hide(id));
+    show('btn-traffic');
 
     if (State.botsEnabled) {
         const npcEls = ['btn-add-npc', 'npc-model', 'npc-personality'];
@@ -455,6 +464,7 @@ window.addEventListener('message', ({ data: { action, data } }) => {
             const isHost = data.isHost === true;
             if (data.mySrc != null) State.mySrc = data.mySrc;
             applyVehicleConfig(data.vehicleConfig);
+            if (data.trafficOn != null) syncTrafficButton(data.trafficOn);
             showScreen('lobby');
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
