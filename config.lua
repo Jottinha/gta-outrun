@@ -95,6 +95,11 @@ Config.Race = {
     GRID_ROW_SPACING           = 8.0,
     GRID_COLUMN_SPACING        = 4.5,
     GRID_STAGGER_SPACING       = 4.0,
+
+    -- Distância máxima entre o SpawnNode e o vehicle node da pista.
+    -- Se o nó mais próximo estiver além desse limite, usa a coordenada
+    -- original do SpawnNode (evita spawnar em rua diferente).
+    SPAWN_NODE_MAX_DISTANCE    = 30.0,
 }
 
 
@@ -328,5 +333,8 @@ Config.PedModels = {
 -- ============================================================
 
 Config.SpawnNodes = {
+    vector3(319.51, -1893.95, 17.17),
+    vector3(-2257.58, 3334.15, 32.42),
+    vector3(-876.01, 2616.49, 56.94),
     vector3(-1729.55, -2884.01, 13.94),
 }

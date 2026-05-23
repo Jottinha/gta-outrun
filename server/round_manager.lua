@@ -13,6 +13,8 @@ RoundManager = {}
 
 local Events = Config.Events
 
+math.randomseed(os.time())
+
 
 -- ===== Internos =====
 

@@ -26,16 +26,84 @@ local function loadModelHash(hash)
 end
 
 
+-- Força o GTA a carregar colisão e cenário na área do spawn.
+-- Sem isso, GetClosestVehicleNodeWithHeading e GetGroundZFor_3dCoord
+-- podem retornar dados errados (Z = 0, nó inexistente) porque a
+-- área ainda não foi streamed.
+local function loadAreaCollision(pos)
+    RequestCollisionAtCoord(pos.x, pos.y, pos.z)
+
+    local sceneHandle = NewLoadSceneStartSphere(pos.x, pos.y, pos.z, 50.0, 0)
+
+    local elapsed = 0
+    while not HasCollisionLoadedAroundEntity(PlayerPedId()) and elapsed < 3000 do
+        RequestCollisionAtCoord(pos.x, pos.y, pos.z)
+        Citizen.Wait(50)
+        elapsed = elapsed + 50
+    end
+
+    if IsNewLoadSceneActive() then
+        NewLoadSceneStop()
+    end
+
+    Logger.debug("SPAWN", ("colisao carregada em %dms"):format(elapsed))
+end
+
+
+local function getGroundZ(x, y, z)
+    -- Testa vários Z altos para garantir raio de busca do chão
+    for _, testZ in ipairs({z + 100.0, z + 50.0, z, z - 50.0}) do
+        local found, groundZ = GetGroundZFor_3dCoord(x, y, testZ, false)
+        if found and groundZ > 0.0 then
+            return groundZ
+        end
+    end
+    return z
+end
+
+
 local function resolveSpawnNode(base)
-    local found, nodePos, nodeHead = GetClosestVehicleNodeWithHeading(
-        base.x, base.y, base.z, 1, 3, 0)
+    local bestPos, bestHead, bestDist
+    local maxDist = Config.Race.SPAWN_NODE_MAX_DISTANCE or 30.0
 
-    if not found or type(nodePos) ~= "vector3" then nodePos = base end
-    if type(nodeHead) ~= "number" then nodeHead = 0.0 end
+    for _, nodeType in ipairs({1, 0}) do
+        local found, nodePos, nodeHead = GetClosestVehicleNodeWithHeading(
+            base.x, base.y, base.z, nodeType, 3, 0)
 
-    Logger.debug("SPAWN", ("spawn node @ %s heading=%s"):format(
-        tostring(nodePos), tostring(nodeHead)))
-    return nodePos, nodeHead
+        if found and type(nodePos) == "vector3" and type(nodeHead) == "number" then
+            local dist = #(vector3(base.x, base.y, 0.0) - vector3(nodePos.x, nodePos.y, 0.0))
+            if not bestDist or dist < bestDist then
+                bestPos  = nodePos
+                bestHead = nodeHead
+                bestDist = dist
+            end
+        end
+    end
+
+    if bestPos and bestDist <= maxDist then
+        local groundZ = getGroundZ(bestPos.x, bestPos.y, bestPos.z)
+        local finalPos = vector3(bestPos.x, bestPos.y, groundZ)
+        Logger.debug("SPAWN", ("spawn node @ %s heading=%.1f dist=%.1fm groundZ=%.1f (OK)"):format(
+            tostring(finalPos), bestHead, bestDist, groundZ))
+        return finalPos, bestHead
+    end
+
+    local fallbackHead = 0.0
+    if bestPos then
+        local dx = bestPos.x - base.x
+        local dy = bestPos.y - base.y
+        if math.abs(dx) > 0.1 or math.abs(dy) > 0.1 then
+            fallbackHead = math.deg(math.atan(dx, dy))
+            if fallbackHead < 0 then fallbackHead = fallbackHead + 360.0 end
+        end
+        Logger.warn("SPAWN", ("node mais proximo ficou a %.1fm (max %.0fm) — usando coordenada original"):format(
+            bestDist, maxDist))
+    else
+        Logger.warn("SPAWN", "nenhum vehicle node encontrado — usando coordenada original")
+    end
+
+    local groundZ = getGroundZ(base.x, base.y, base.z)
+    return vector3(base.x, base.y, groundZ), fallbackHead
 end
 
 
@@ -56,6 +124,7 @@ local function createVehicleAt(model, x, y, z, heading)
     end
 
     local veh = CreateVehicle(hash, x, y, z, heading, true, false)
+    SetVehicleOnGroundProperly(veh)
     SetVehicleEngineOn(veh, false, true, false)
     FreezeEntityPosition(veh, true)
     SetEntityAsMissionEntity(veh, true, true)
@@ -103,7 +172,6 @@ end
 -- ============================================================
 
 function Spawn.runMyVehicle(payload)
-    -- Limpar veículo anterior se existir
     if RaceState.myVehicle and DoesEntityExist(RaceState.myVehicle) then
         DeleteVehicle(RaceState.myVehicle)
         RaceState.myVehicle = nil
@@ -113,7 +181,12 @@ function Spawn.runMyVehicle(payload)
     RaceState.isMultiplayer = true
     RaceState.roomId        = payload.roomId
 
-    local base              = payload.spawnBase
+    local base = payload.spawnBase
+
+    -- Teleportar player perto e carregar colisão antes de resolver nó
+    SetEntityCoords(PlayerPedId(), base.x, base.y, base.z, false, false, false, false)
+    loadAreaCollision(base)
+
     local nodePos, nodeHead = resolveSpawnNode(base)
     local fwdX, fwdY, rgtX, rgtY = Grid.basisFromHeading(nodeHead)
 
@@ -157,6 +230,10 @@ function Spawn.run(payload)
     RaceState.isMultiplayer = false
     RaceState.roomId        = payload.roomId
     RaceState.participants  = {}
+
+    -- Teleportar player perto e carregar colisão antes de resolver nó
+    SetEntityCoords(PlayerPedId(), base.x, base.y, base.z, false, false, false, false)
+    loadAreaCollision(base)
 
     local nodePos, nodeHead = resolveSpawnNode(base)
     local forwardX, forwardY, rightX, rightY = Grid.basisFromHeading(nodeHead)
