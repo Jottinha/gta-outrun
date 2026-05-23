@@ -2,7 +2,7 @@
 
 // ============================================================ State + helpers
 
-const State = { selectedPts: 50, isReady: false, trafficOn: true, isLeader: false, isHost: false };
+const State = { selectedPts: 50, isReady: false, trafficOn: true, isLeader: false, isHost: false, mySrc: null };
 
 const $    = (id) => document.getElementById(id);
 const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
@@ -29,7 +29,7 @@ function postNUI(action, data = {}) {
 // Mostra ou esconde elementos exclusivos do host no lobby.
 function setHostUI(isHost) {
     State.isHost = isHost;
-    const hostEls = ['btn-start', 'btn-add-npc', 'npc-model', 'npc-personality'];
+    const hostEls = ['btn-start', 'btn-add-npc', 'npc-model', 'npc-personality', 'btn-traffic'];
     hostEls.forEach(id => isHost ? show(id) : hide(id));
     // Point targets só o host pode alterar (não-host vê mas não clica)
     const ptGroup = $('point-targets');
@@ -176,8 +176,12 @@ function renderParticipants(participants, isHost) {
     const btnStart = $('btn-start');
     if (btnStart) btnStart.disabled = !allHumansReady || !isHost;
 
-    // Sincroniza seletor de carro do próprio jogador
-    const myPlr = participants.find(p => !p.isNPC);
+    // Sincroniza seletor de carro do próprio jogador.
+    // Usa mySrc para encontrar a entrada correta — não apenas o primeiro não-NPC,
+    // que seria sempre o host independente de quem está renderizando.
+    const myPlr = State.mySrc != null
+        ? participants.find(p => p.source == State.mySrc)
+        : participants.find(p => !p.isNPC);
     if (myPlr && myPlr.model) {
         const sel = $('my-car');
         if (sel && sel.value !== myPlr.model) sel.value = myPlr.model;
@@ -314,6 +318,7 @@ window.addEventListener('message', ({ data: { action, data } }) => {
         // Lobby
         case 'lobbyCreated': {
             const isHost = data.isHost === true;
+            if (data.mySrc != null) State.mySrc = data.mySrc;
             showScreen('lobby');
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
@@ -321,6 +326,7 @@ window.addEventListener('message', ({ data: { action, data } }) => {
         }
         case 'lobbyUpdated': {
             const isHost = data.isHost === true;
+            if (data.mySrc != null) State.mySrc = data.mySrc;
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
             break;
