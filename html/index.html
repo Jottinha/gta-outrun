@@ -10,7 +10,10 @@
 
 <!-- ===================== MAIN MENU ===================== -->
 <div id="main-menu" class="hidden screen-backdrop">
-    <div class="menu-container">
+    <div class="menu-container draggable-panel" id="main-menu-panel">
+        <div class="drag-handle" data-drag-target="main-menu-panel" title="Arraste para mover">
+            <span class="drag-dots">⋮⋮</span>
+        </div>
         <header class="menu-header">
             <h1 class="neon-title">OUTRUN</h1>
             <p class="menu-subtitle">Modo gato e rato — corrida arcade</p>
@@ -38,7 +41,10 @@
 
 <!-- ===================== JOIN MENU ===================== -->
 <div id="join-menu" class="hidden screen-backdrop">
-    <div class="menu-container">
+    <div class="menu-container draggable-panel" id="join-menu-panel">
+        <div class="drag-handle" data-drag-target="join-menu-panel" title="Arraste para mover">
+            <span class="drag-dots">⋮⋮</span>
+        </div>
         <header class="menu-header join-header">
             <button class="btn-back" id="btn-join-back">← VOLTAR</button>
             <h2 class="neon-title small">SALAS DISPONÍVEIS</h2>
@@ -57,7 +63,11 @@
 
 <!-- ===================== LOBBY (criação de corrida) ===================== -->
 <div id="lobby" class="hidden">
-    <div class="lobby-container">
+    <div class="lobby-container draggable-panel" id="lobby-container">
+
+        <div class="drag-handle" data-drag-target="lobby-container" title="Arraste para mover">
+            <span class="drag-dots">⋮⋮</span>
+        </div>
 
         <aside class="lobby-settings">
             <div class="lobby-settings-header">
@@ -74,21 +84,23 @@
                 </div>
             </div>
 
+            <!-- Vehicle selector with 3D preview -->
             <div class="field-group">
                 <label>Meu Carro</label>
-                <select id="my-car">
-                    <option value="sultan">Sultan</option>
-                    <option value="elegy2">Elegy RH8</option>
-                    <option value="adder">Adder</option>
-                    <option value="t20">T20</option>
-                    <option value="zentorno">Zentorno</option>
-                    <option value="kuruma">Kuruma</option>
-                    <option value="comet2">Comet</option>
-                    <option value="banshee">Banshee</option>
-                </select>
+                <div class="vehicle-selector">
+                    <button class="vehicle-nav vehicle-prev" id="vehicle-prev" title="Anterior">‹</button>
+                    <div class="vehicle-display">
+                        <div class="vehicle-name" id="vehicle-name">Sultan</div>
+                        <div class="vehicle-model-tag" id="vehicle-model-tag">sultan</div>
+                    </div>
+                    <button class="vehicle-nav vehicle-next" id="vehicle-next" title="Próximo">›</button>
+                </div>
             </div>
 
-            <div class="field-group">
+            <!-- Hidden select to maintain compatibility -->
+            <select id="my-car" class="hidden"></select>
+
+            <div class="field-group" id="npc-section">
                 <label>Adicionar NPC</label>
                 <div class="npc-row">
                     <select id="npc-model">

@@ -91,6 +91,11 @@ RegisterNetEvent(SE.ADD_NPC, function(model, personality)
     local _, room = Rooms.getByHost(src)
     if not room or room.state ~= Config.States.Room.LOBBY then return end
 
+    if not Config.Features.BotsEnabled then
+        TriggerClientEvent(CE.NOTIFY, src, "Bots estão temporariamente desabilitados.")
+        return
+    end
+
     if Rooms.isMultiplayer(room) then
         TriggerClientEvent(CE.NOTIFY, src, "Bots não são permitidos em partidas multiplayer.")
         return

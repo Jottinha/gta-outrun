@@ -276,6 +276,38 @@ Config.Vehicles = {
     },
 }
 
+Config.VehicleDisplay = {
+    sultan   = { label = "Sultan" },
+    elegy2   = { label = "Elegy RH8" },
+    adder    = { label = "Adder" },
+    t20      = { label = "T20" },
+    zentorno = { label = "Zentorno" },
+    kuruma   = { label = "Kuruma" },
+    comet2   = { label = "Comet" },
+    banshee  = { label = "Banshee" },
+}
+
+
+-- ============================================================
+-- 9b) Config.Features — Feature flags
+-- ============================================================
+
+Config.Features = {
+    BotsEnabled = false,
+}
+
+
+-- ============================================================
+-- 9c) Config.Preview — Configuração do preview 3D de veículos
+-- ============================================================
+
+Config.Preview = {
+    OFFSET    = vector3(0.0, 6.0, 0.5),
+    CAM_HEIGHT_OFFSET = 1.0,
+    CAM_BACK_OFFSET   = 5.5,
+    ROTATION_SPEED    = 0.3,
+}
+
 
 -- ============================================================
 -- 10) Config.PedModels — Modelos de peds usados como motoristas NPC

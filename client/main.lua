@@ -53,10 +53,12 @@ function Lobby.toggleReady()
 end
 
 function Lobby.startRace()
+    VehiclePreview.destroy()
     TriggerServerEvent(SE.START_RACE)
 end
 
 function Lobby.leave()
+    VehiclePreview.destroy()
     if hasActiveLobby then
         TriggerServerEvent(SE.LEAVE_LOBBY)
         hasActiveLobby = false
@@ -64,6 +66,7 @@ function Lobby.leave()
 end
 
 function Lobby.closeMenu()
+    VehiclePreview.destroy()
     if hasActiveLobby then
         TriggerServerEvent(SE.LEAVE_LOBBY)
         hasActiveLobby = false
@@ -85,10 +88,40 @@ function Lobby.joinRoom(data)
     TriggerServerEvent(SE.JOIN_ROOM, tonumber(data.roomId))
 end
 
+-- Vehicle preview 3D
+function Lobby.previewVehicle(data)
+    local model = data.model or Config.Vehicles.DEFAULT
+    if VehiclePreview.isActive() then
+        VehiclePreview.switchModel(model)
+    else
+        VehiclePreview.show(model)
+    end
+end
+
+function Lobby.destroyPreview()
+    VehiclePreview.destroy()
+end
+
 
 -- ============================================================
 -- Comando
 -- ============================================================
+
+local function buildVehicleConfig()
+    local vehicles = {}
+    for _, model in ipairs(Config.Vehicles.SELECTABLE) do
+        local display = Config.VehicleDisplay[model]
+        vehicles[#vehicles + 1] = {
+            model = model,
+            label = display and display.label or model,
+        }
+    end
+    return {
+        vehicles     = vehicles,
+        defaultModel = Config.Vehicles.DEFAULT,
+        botsEnabled  = Config.Features.BotsEnabled,
+    }
+end
 
 RegisterCommand('outrun', function()
     Nui.setFocus(true)
@@ -130,7 +163,10 @@ RegisterNetEvent(CE.LOBBY_CREATED, function(roomId, room, isHostOverride)
     local myId   = GetPlayerServerId(PlayerId())
     local isHost = (isHostOverride ~= nil) and isHostOverride or (room.host == myId)
     Nui.setFocus(true)
-    Nui.send('lobbyCreated', { roomId = roomId, room = room, isHost = isHost, mySrc = myId })
+    Nui.send('lobbyCreated', {
+        roomId = roomId, room = room, isHost = isHost, mySrc = myId,
+        vehicleConfig = buildVehicleConfig(),
+    })
 end)
 
 RegisterNetEvent(CE.NO_ACTIVE_LOBBY, function()
@@ -142,7 +178,10 @@ end)
 RegisterNetEvent(CE.LOBBY_UPDATED, function(room)
     local myId   = GetPlayerServerId(PlayerId())
     local isHost = (room.host == myId)
-    Nui.send('lobbyUpdated', { room = room, isHost = isHost, mySrc = myId })
+    Nui.send('lobbyUpdated', {
+        room = room, isHost = isHost, mySrc = myId,
+        vehicleConfig = buildVehicleConfig(),
+    })
 end)
 
 RegisterNetEvent(CE.ROOMS_LIST, function(rooms)
@@ -222,6 +261,7 @@ RegisterNetEvent(CE.NOTIFY, function(msg)
 end)
 
 RegisterNetEvent(CE.FORCE_LOBBY_CLOSE, function()
+    VehiclePreview.destroy()
     hasActiveLobby = false
     RaceState.reset()
     LeaderBlip.clear()
@@ -233,6 +273,7 @@ end)
 
 -- Solo: host recebe lista completa de participants para spawnar tudo
 RegisterNetEvent(CE.SPAWN_VEHICLES, function(payload)
+    VehiclePreview.destroy()
     Nui.setFocus(false)
     Nui.send('hideMenus', {})
     RaceOrchestrator.beginRound(payload)
@@ -240,6 +281,7 @@ end)
 
 -- Multiplayer: cada player spawna só o seu veículo
 RegisterNetEvent(CE.SPAWN_MY_VEHICLE, function(payload)
+    VehiclePreview.destroy()
     hasActiveLobby = true
     Nui.setFocus(false)
     Nui.send('hideMenus', {})

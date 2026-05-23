@@ -50,6 +50,10 @@ function Nui.registerCallbacks()
     nuiCallback('startRace',     function()     Lobby.startRace()          end)
     nuiCallback('setTraffic',    function(data) Lobby.setTraffic(data)     end)
 
+    -- Vehicle preview 3D
+    nuiCallback('previewVehicle', function(data) Lobby.previewVehicle(data) end)
+    nuiCallback('destroyPreview', function()     Lobby.destroyPreview()     end)
+
     -- Aliases legados (compat com versões anteriores da NUI; podem ser
     -- removidos depois que estabilizar)
     nuiCallback('createLobby',   function(data) Lobby.create(data)         end)

@@ -2,13 +2,17 @@
 
 // ============================================================ State + helpers
 
-const State = { selectedPts: 50, isReady: false, trafficOn: true, isLeader: false, isHost: false, mySrc: null };
+const State = {
+    selectedPts: 50, isReady: false, trafficOn: true,
+    isLeader: false, isHost: false, mySrc: null,
+    vehicleIndex: 0, vehicles: [], botsEnabled: false,
+    previewActive: false,
+};
 
 const $    = (id) => document.getElementById(id);
 const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
 const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden');    };
 
-// Telas mutuamente exclusivas: showScreen garante que apenas uma fica visível.
 const MENU_SCREENS = ['main-menu', 'join-menu', 'lobby'];
 
 function showScreen(id) {
@@ -17,6 +21,7 @@ function showScreen(id) {
 
 function hideAllMenus() {
     MENU_SCREENS.forEach(hide);
+    destroyPreview();
 }
 
 function postNUI(action, data = {}) {
@@ -26,12 +31,19 @@ function postNUI(action, data = {}) {
     }).catch(() => {});
 }
 
-// Mostra ou esconde elementos exclusivos do host no lobby.
 function setHostUI(isHost) {
     State.isHost = isHost;
-    const hostEls = ['btn-start', 'btn-add-npc', 'npc-model', 'npc-personality', 'btn-traffic'];
+    const hostEls = ['btn-start', 'btn-traffic'];
     hostEls.forEach(id => isHost ? show(id) : hide(id));
-    // Point targets só o host pode alterar (não-host vê mas não clica)
+
+    if (State.botsEnabled) {
+        const npcEls = ['btn-add-npc', 'npc-model', 'npc-personality'];
+        npcEls.forEach(id => isHost ? show(id) : hide(id));
+        show('npc-section');
+    } else {
+        hide('npc-section');
+    }
+
     const ptGroup = $('point-targets');
     if (ptGroup) {
         ptGroup.querySelectorAll('.btn-option').forEach(b => {
@@ -40,6 +52,78 @@ function setHostUI(isHost) {
         });
     }
 }
+
+
+// ============================================================ Vehicle selector
+
+function getCurrentVehicle() {
+    return State.vehicles[State.vehicleIndex] || { model: 'sultan', label: 'Sultan' };
+}
+
+function updateVehicleDisplay() {
+    const v = getCurrentVehicle();
+    const nameEl = $('vehicle-name');
+    const tagEl  = $('vehicle-model-tag');
+    if (nameEl) nameEl.textContent = v.label;
+    if (tagEl)  tagEl.textContent = v.model;
+
+    const sel = $('my-car');
+    if (sel) sel.value = v.model;
+}
+
+function requestPreview(model) {
+    State.previewActive = true;
+    postNUI('previewVehicle', { model: model });
+}
+
+function destroyPreview() {
+    if (State.previewActive) {
+        State.previewActive = false;
+        postNUI('destroyPreview');
+    }
+}
+
+function navigateVehicle(direction) {
+    if (State.vehicles.length === 0) return;
+    State.vehicleIndex = (State.vehicleIndex + direction + State.vehicles.length) % State.vehicles.length;
+    updateVehicleDisplay();
+    const v = getCurrentVehicle();
+    postNUI('setMyCar', { model: v.model });
+    requestPreview(v.model);
+}
+
+function setVehicleByModel(model) {
+    const idx = State.vehicles.findIndex(v => v.model === model);
+    if (idx >= 0) {
+        State.vehicleIndex = idx;
+        updateVehicleDisplay();
+    }
+}
+
+function applyVehicleConfig(cfg) {
+    if (!cfg) return;
+    if (cfg.vehicles && cfg.vehicles.length > 0) {
+        State.vehicles = cfg.vehicles;
+    }
+    State.botsEnabled = cfg.botsEnabled === true;
+
+    if (cfg.defaultModel && State.vehicles.length > 0) {
+        const idx = State.vehicles.findIndex(v => v.model === cfg.defaultModel);
+        if (idx >= 0) State.vehicleIndex = idx;
+    }
+    updateVehicleDisplay();
+}
+
+function setupVehicleSelector() {
+    $('vehicle-prev').addEventListener('click', () => navigateVehicle(-1));
+    $('vehicle-next').addEventListener('click', () => navigateVehicle(1));
+}
+
+function initPreviewOnLobbyOpen() {
+    const v = getCurrentVehicle();
+    requestPreview(v.model);
+}
+
 
 // ============================================================ Main menu
 
@@ -121,10 +205,6 @@ function setupLobby() {
         postNUI('addNPC', { model: $('npc-model').value, personality: $('npc-personality').value });
     });
 
-    $('my-car').addEventListener('change', () => {
-        postNUI('setMyCar', { model: $('my-car').value });
-    });
-
     $('btn-traffic').addEventListener('click', () => {
         State.trafficOn = !State.trafficOn;
         $('btn-traffic').textContent = State.trafficOn ? 'ON' : 'OFF';
@@ -141,10 +221,12 @@ function setupLobby() {
 
     $('btn-start').addEventListener('click', () => {
         if (!State.isHost) return;
+        destroyPreview();
         postNUI('startRace');
     });
 
     $('btn-lobby-back').addEventListener('click', () => {
+        destroyPreview();
         postNUI('leaveLobby');
         showScreen('main-menu');
     });
@@ -153,6 +235,13 @@ function setupLobby() {
         hideAllMenus();
         postNUI('closeMenu');
     });
+
+    setupVehicleSelector();
+}
+
+function getVehicleLabel(model) {
+    const v = State.vehicles.find(v => v.model === model);
+    return v ? v.label : model;
 }
 
 function renderParticipants(participants, isHost) {
@@ -166,29 +255,22 @@ function renderParticipants(participants, isHost) {
                 : '[P] ' + (p.name || p.source)
             }</div>
             <div>
-                <div class="participant-car">${p.model || '—'}</div>
+                <div class="participant-car">${p.model ? getVehicleLabel(p.model) : '—'}</div>
                 ${p.isNPC ? `<div class="participant-tag">${pLabel[p.personality] || ''}</div>` : ''}
             </div>
             <div class="participant-ready ${p.ready ? 'ready' : ''}"></div>
         </div>`).join('');
 
-    // Apenas o host pode iniciar; não-host vê botão desabilitado visualmente
     const btnStart = $('btn-start');
     if (btnStart) btnStart.disabled = !allHumansReady || !isHost;
 
-    // Sincroniza seletor de carro do próprio jogador.
-    // Usa mySrc para encontrar a entrada correta — não apenas o primeiro não-NPC,
-    // que seria sempre o host independente de quem está renderizando.
     const myPlr = State.mySrc != null
         ? participants.find(p => p.source == State.mySrc)
         : participants.find(p => !p.isNPC);
     if (myPlr && myPlr.model) {
-        const sel = $('my-car');
-        if (sel && sel.value !== myPlr.model) sel.value = myPlr.model;
+        setVehicleByModel(myPlr.model);
     }
 }
-
-// ============================================================ HUD
 
 // ============================================================ Leader takeover
 
@@ -242,8 +324,6 @@ function updateHUD({ isLeader, dist, maxDist, position }) {
     State.isLeader = isLeader;
     const fill    = $('hud-bar-fill');
 
-    // Quando líder sem runner-up (curva brusca desaparece momentaneamente),
-    // mantém o último valor conhecido em vez de zerar a barra.
     let effectiveDist = dist;
     if (isLeader) {
         if (typeof dist === 'number') _lastLeaderDist = dist;
@@ -308,7 +388,6 @@ function showCountdown({ isBonusRound }) {
 }
 
 function countdownTick({ count }) {
-    // Safety: garante que a tela de countdown está visível mesmo se ALL_SPAWNED chegou atrasado
     if ($('countdown').classList.contains('hidden')) showCountdown({ isBonusRound: false });
     const el = $('countdown-number');
     el.textContent = count;
@@ -325,8 +404,6 @@ function countdownGo() {
 // ============================================================ Results
 
 function showRoundResult({ results, scores, names }) {
-    // Lua envia chaves numéricas que viram strings no JSON ("1", "2").
-    // r.id pode ser número ou string (NPC). String(id) funciona para ambos.
     const getName  = (id) => (names  && (names[id]  || names[String(id)]))  || id;
     const getScore = (id) => (scores && (scores[id] !== undefined ? scores[id] : scores[String(id)])) || 0;
     hide('hud'); show('round-result');
@@ -367,34 +444,33 @@ function showEndScreen({ champion, scores, names }) {
 
 window.addEventListener('message', ({ data: { action, data } }) => {
     switch (action) {
-        // Navegação de menus
         case 'openMenu':  showScreen('main-menu'); break;
         case 'showLobby': showScreen('lobby');     break;
         case 'hideMenus': hideAllMenus();          break;
 
-        // Compatibilidade legada
         case 'openLobby': showScreen('lobby'); break;
         case 'hideLobby': hideAllMenus();      break;
 
-        // Lobby
         case 'lobbyCreated': {
             const isHost = data.isHost === true;
             if (data.mySrc != null) State.mySrc = data.mySrc;
+            applyVehicleConfig(data.vehicleConfig);
             showScreen('lobby');
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
+            initPreviewOnLobbyOpen();
             break;
         }
         case 'lobbyUpdated': {
             const isHost = data.isHost === true;
             if (data.mySrc != null) State.mySrc = data.mySrc;
+            if (data.vehicleConfig) applyVehicleConfig(data.vehicleConfig);
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
             break;
         }
         case 'roomsList': renderRoomsList(data.rooms || []); break;
 
-        // Corrida em andamento
         case 'showCountdown': showCountdown(data); break;
         case 'countdownTick': countdownTick(data); break;
         case 'countdownGo':   countdownGo();       break;
@@ -407,8 +483,74 @@ window.addEventListener('message', ({ data: { action, data } }) => {
     }
 });
 
+// ============================================================ Drag system
+
+function setupDrag() {
+    let dragging = null;
+    let offsetX = 0, offsetY = 0;
+
+    document.addEventListener('mousedown', (e) => {
+        const handle = e.target.closest('.drag-handle');
+        if (!handle) return;
+
+        const targetId = handle.dataset.dragTarget;
+        const panel = document.getElementById(targetId);
+        if (!panel) return;
+
+        e.preventDefault();
+
+        if (!panel.dataset.dragInit) {
+            const rect = panel.getBoundingClientRect();
+            panel.style.position = 'fixed';
+            panel.style.left = rect.left + 'px';
+            panel.style.top = rect.top + 'px';
+            panel.style.margin = '0';
+            panel.dataset.dragInit = '1';
+        }
+
+        dragging = panel;
+        offsetX = e.clientX - panel.getBoundingClientRect().left;
+        offsetY = e.clientY - panel.getBoundingClientRect().top;
+        panel.classList.add('dragging');
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        e.preventDefault();
+
+        let newX = e.clientX - offsetX;
+        let newY = e.clientY - offsetY;
+
+        const maxX = window.innerWidth - dragging.offsetWidth;
+        const maxY = window.innerHeight - dragging.offsetHeight;
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+
+        dragging.style.left = newX + 'px';
+        dragging.style.top = newY + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (dragging) {
+            dragging.classList.remove('dragging');
+            dragging = null;
+        }
+    });
+}
+
+function resetAllPanelPositions() {
+    document.querySelectorAll('.draggable-panel[data-drag-init]').forEach(panel => {
+        panel.style.position = '';
+        panel.style.left = '';
+        panel.style.top = '';
+        panel.style.margin = '';
+        delete panel.dataset.dragInit;
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     setupMainMenu();
     setupJoinMenu();
     setupLobby();
+    setupDrag();
 });

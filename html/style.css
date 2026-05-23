@@ -26,6 +26,43 @@ body {
 
 .hidden { display: none !important; }
 
+/* ============================================================ DRAG SYSTEM */
+
+.draggable-panel {
+    position : relative;
+}
+
+.drag-handle {
+    pointer-events  : all;
+    width           : 100%;
+    height          : 22px;
+    display         : flex;
+    align-items     : center;
+    justify-content : center;
+    cursor          : grab;
+    background      : rgba(0,207,255,0.04);
+    border-bottom   : 1px solid rgba(0,207,255,0.1);
+    transition      : background 0.15s;
+    flex-shrink     : 0;
+}
+.drag-handle:hover {
+    background : rgba(0,207,255,0.1);
+}
+.drag-handle:active {
+    cursor : grabbing;
+}
+.drag-dots {
+    font-size      : 12px;
+    letter-spacing : 3px;
+    color          : rgba(255,255,255,0.2);
+    line-height    : 1;
+}
+
+.dragging {
+    opacity    : 0.92;
+    box-shadow : 0 0 50px rgba(0,207,255,0.3);
+}
+
 /* Backdrop comum às telas de menu */
 .screen-backdrop {
     pointer-events  : all;
@@ -264,8 +301,8 @@ body {
 
 #lobby {
     pointer-events  : all;
-    width           : 100vw;
-    height          : 100vh;
+    position        : fixed;
+    inset           : 0;
     display         : flex;
     align-items     : center;
     justify-content : center;
@@ -279,10 +316,14 @@ body {
     border-radius        : 12px;
     box-shadow           : 0 0 40px rgba(0,207,255,0.15);
     display              : grid;
-    grid-template-rows   : 1fr auto;
+    grid-template-rows   : auto 1fr auto;
     grid-template-columns: 240px 1fr;
-    grid-template-areas  : "settings participants" "footer footer";
+    grid-template-areas  : "drag drag" "settings participants" "footer footer";
     overflow             : hidden;
+}
+
+.lobby-container > .drag-handle {
+    grid-area : drag;
 }
 
 .lobby-settings {
@@ -360,6 +401,69 @@ select:focus { outline: none; border-color: var(--neon-blue); }
     color: var(--neon-green); cursor: pointer; font-size: 13px;
 }
 .btn-toggle.off { background: rgba(255,34,68,0.1); border-color: var(--neon-red); color: var(--neon-red); }
+
+/* ============================================================ VEHICLE SELECTOR */
+
+.vehicle-selector {
+    display        : flex;
+    align-items    : center;
+    gap            : 8px;
+    padding        : 4px 0;
+}
+
+.vehicle-nav {
+    pointer-events : all;
+    width          : 36px;
+    height         : 36px;
+    background     : rgba(0,207,255,0.06);
+    border         : 1px solid var(--border);
+    border-radius  : 8px;
+    color          : var(--neon-blue);
+    font-size      : 22px;
+    cursor         : pointer;
+    display        : flex;
+    align-items    : center;
+    justify-content: center;
+    transition     : all 0.15s;
+    flex-shrink    : 0;
+    line-height    : 1;
+}
+.vehicle-nav:hover {
+    background   : rgba(0,207,255,0.18);
+    border-color : var(--neon-blue);
+    box-shadow   : 0 0 12px rgba(0,207,255,0.25);
+    color        : #fff;
+}
+.vehicle-nav:active {
+    transform    : scale(0.92);
+}
+
+.vehicle-display {
+    flex           : 1;
+    text-align     : center;
+    display        : flex;
+    flex-direction : column;
+    gap            : 2px;
+    min-width      : 0;
+}
+
+.vehicle-name {
+    font-size      : 16px;
+    font-weight    : 700;
+    color          : var(--neon-green);
+    text-shadow    : 0 0 8px rgba(0,255,136,0.3);
+    letter-spacing : 1px;
+    white-space    : nowrap;
+    overflow       : hidden;
+    text-overflow  : ellipsis;
+}
+
+.vehicle-model-tag {
+    font-size      : 10px;
+    color          : rgba(255,255,255,0.3);
+    letter-spacing : 2px;
+    text-transform : uppercase;
+}
 
 .lobby-participants { grid-area: participants; padding: 24px 20px; overflow-y: auto; max-height: 420px; }
 
