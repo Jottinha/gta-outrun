@@ -95,7 +95,11 @@ function RoundManager.start(roomId, room)
     local spawnPoint = pickSpawnNode()
     local bonus      = rollBonusRound(room)
 
-    if Rooms.isMultiplayer(room) then
+    local isMP = Rooms.isMultiplayer(room)
+    Logger.info("SRV", ("Sala %d rodada %d — modo: %s, humans: %d"):format(
+        roomId, room.roundNum, isMP and "MP" or "SOLO", Rooms.humanCount(room)))
+
+    if isMP then
         -- MP: cada player spawna o seu veículo
         local humanIdx   = 0
         local humanCount = Rooms.humanCount(room)

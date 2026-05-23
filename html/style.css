@@ -406,6 +406,30 @@ select:focus { outline: none; border-color: var(--neon-blue); }
 
 /* ============================================================ COUNTDOWN */
 
+/* ============================================================ ANÚNCIO DE LIDERANÇA */
+
+#leader-takeover {
+    position: fixed; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+}
+
+.takeover-text {
+    font-size: 180px; font-weight: 900; letter-spacing: -10px;
+    color: var(--neon-green);
+    text-shadow: 0 0 40px var(--neon-green), 0 0 80px var(--neon-green);
+    animation: takeoverPop 1s ease-out forwards;
+}
+
+@keyframes takeoverPop {
+    0%   { transform: scale(1.4); opacity: 0.4; }
+    25%  { transform: scale(1);   opacity: 1;   }
+    65%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* ============================================================ CONTAGEM */
+
 #countdown {
     position: fixed; inset: 0; display: flex;
     flex-direction: column; align-items: center; justify-content: center; gap: 20px;

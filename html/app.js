@@ -190,9 +190,36 @@ function renderParticipants(participants, isHost) {
 
 // ============================================================ HUD
 
+// ============================================================ Leader takeover
+
+let leaderTakeoverTimer = null;
+let _wasLeader = false;
+
+function showLeaderTakeover() {
+    const el = $('leader-takeover');
+    if (!el) return;
+    if (leaderTakeoverTimer) { clearTimeout(leaderTakeoverTimer); leaderTakeoverTimer = null; }
+    el.classList.remove('hidden');
+    // Força restart da animação independente do estado anterior
+    const txt = el.querySelector('.takeover-text');
+    if (txt) {
+        txt.style.animation = 'none';
+        void txt.offsetWidth;
+        txt.style.animation = 'takeoverPop 1s ease-out forwards';
+    }
+    leaderTakeoverTimer = setTimeout(() => {
+        el.classList.add('hidden');
+        leaderTakeoverTimer = null;
+    }, 1000);
+}
+
+// ============================================================ HUD
+
 let dangerPlaying = false;
 
 function updateHUD({ isLeader, dist, maxDist, position }) {
+    if (isLeader && !_wasLeader) showLeaderTakeover();
+    _wasLeader = isLeader;
     State.isLeader = isLeader;
     const fill    = $('hud-bar-fill');
     const hasDist = typeof dist === 'number';
@@ -252,6 +279,8 @@ function showCountdown({ isBonusRound }) {
 }
 
 function countdownTick({ count }) {
+    // Safety: garante que a tela de countdown está visível mesmo se ALL_SPAWNED chegou atrasado
+    if ($('countdown').classList.contains('hidden')) showCountdown({ isBonusRound: false });
     const el = $('countdown-number');
     el.textContent = count;
     el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'countPulse 0.8s ease-out';
@@ -267,21 +296,24 @@ function countdownGo() {
 // ============================================================ Results
 
 function showRoundResult({ results, scores, names }) {
-    const getName = (id) => (names && names[id]) || id;
+    // Lua envia chaves numéricas que viram strings no JSON ("1", "2").
+    // r.id pode ser número ou string (NPC). String(id) funciona para ambos.
+    const getName  = (id) => (names  && (names[id]  || names[String(id)]))  || id;
+    const getScore = (id) => (scores && (scores[id] !== undefined ? scores[id] : scores[String(id)])) || 0;
     hide('hud'); show('round-result');
     const labels = ['1º','2º','3º','4º','5º','6º','7º','8º'];
     $('result-list').innerHTML = (results||[]).map((r,i) => `
         <div class="result-row">
             <span class="result-pos">${labels[i]||i+1+'º'}</span>
             <span>${getName(r.id)}</span>
-            <span>${(scores&&scores[r.id])||0} pts</span>
+            <span>${getScore(r.id)} pts</span>
         </div>`).join('');
 
     setTimeout(() => hide('round-result'), 10000);
 }
 
 function showEndScreen({ champion, scores, names }) {
-    const getName = (id) => (names && names[id]) || id;
+    const getName = (id) => (names && (names[id] || names[String(id)])) || id;
     hide('hud'); hide('round-result'); show('end-screen');
 
     $('champion-name').textContent = getName(champion);
@@ -339,7 +371,7 @@ window.addEventListener('message', ({ data: { action, data } }) => {
         case 'countdownGo':   countdownGo();       break;
         case 'showHUD':       show('hud');          break;
         case 'updateHUD':     updateHUD(data);      break;
-        case 'leaderChanged': playLeaderSwoosh();   break;
+        case 'leaderChanged': playLeaderSwoosh(); break;
         case 'showRoundResult':
         case 'roundResult':   showRoundResult(data); break;
         case 'endScreen':     showEndScreen(data);   break;

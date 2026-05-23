@@ -261,6 +261,7 @@ end
 -- ============================================================
 
 function RaceOrchestrator.beginRoundMP(payload)
+    roundEnded = false
     RaceOrchestrator.cleanupVehicles()
     LeaderBlip.clear()
     ChaserBlips.clear()
