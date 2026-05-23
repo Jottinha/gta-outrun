@@ -125,6 +125,12 @@ function RaceServer.startSession(roomId, room)
                                 end
                             end
                         end
+                        -- Fallback: em curvas o forward gira e runnerUp pode sumir
+                        -- por 1-2 ticks. Usa standings[2].dist (2D puro) pra não
+                        -- piscar "—" na HUD do líder.
+                        if not runnerUpDist and standings[2] then
+                            runnerUpDist = standings[2].dist
+                        end
 
                         Rooms.eachHuman(room, function(p)
                             TriggerClientEvent(CE.STANDINGS_UPDATE, p.source, {

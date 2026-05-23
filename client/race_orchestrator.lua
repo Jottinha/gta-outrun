@@ -165,7 +165,9 @@ local function updateLocalHUD(standings, runnerUp)
     local isLeader = (myId == RaceState.leaderId)
     local riskDist
     if isLeader then
-        riskDist = runnerUp and runnerUp.dist or nil
+        riskDist = (runnerUp and runnerUp.dist)
+                or (standings[2] and standings[2].dist)
+                or nil
     else
         riskDist = myEntry.dist or 0
     end

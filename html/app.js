@@ -250,8 +250,9 @@ function updateHUD({ isLeader, dist, maxDist, position }) {
         else effectiveDist = _lastLeaderDist;
     }
 
-    const hasDist = typeof effectiveDist === 'number';
-    const percent = hasDist ? Math.min(effectiveDist / maxDist, 1.0) : 0;
+    const hasEffective = typeof effectiveDist === 'number';
+    const hasRealDist  = typeof dist === 'number';
+    const percent = hasEffective ? Math.min(effectiveDist / maxDist, 1.0) : 0;
 
     fill.style.width = (percent * 100).toFixed(1) + '%';
 
@@ -262,13 +263,13 @@ function updateHUD({ isLeader, dist, maxDist, position }) {
     } else {
         fill.classList.add('chaser');
         $('hud-position').textContent = position + 'º';
-        const isDanger = hasDist && percent >= 0.8;
+        const isDanger = hasEffective && percent >= 0.8;
         fill.classList.toggle('danger', isDanger);
         if (isDanger && !dangerPlaying) { dangerPlaying = true; playBeep(percent); }
         else if (!isDanger) { dangerPlaying = false; }
     }
 
-    $('hud-dist').textContent = hasDist
+    $('hud-dist').textContent = hasRealDist
         ? Math.floor(dist) + 'm / ' + maxDist + 'm'
         : '— / ' + maxDist + 'm';
 }
