@@ -24,34 +24,6 @@ local spawnedVehicles = {}
 local roundEnded      = false
 
 
--- ===== Helper: blips dos chasers para o líder =====
-
-local function updateChaserBlipsFromStandings(standings)
-    local myId   = GetPlayerServerId(PlayerId())
-    if myId ~= RaceState.leaderId then
-        ChaserBlips.clear()
-        return
-    end
-    local chasers = {}
-    for _, entry in ipairs(standings) do
-        if not entry.isLeader and not entry.eliminated then
-            local veh = entry.vehicle
-            if (not veh or not DoesEntityExist(veh)) then
-                local p = RaceState.findParticipant(entry.id)
-                if p and p.netId then
-                    veh = NetToVeh(p.netId)
-                    if DoesEntityExist(veh) then p.vehicle = veh end
-                end
-            end
-            if veh and DoesEntityExist(veh) then
-                chasers[#chasers + 1] = veh
-            end
-        end
-        if #chasers >= 3 then break end
-    end
-    ChaserBlips.update(chasers)
-end
-
 
 -- ===== Accessors usados pelos loops (solo) =====
 
@@ -223,7 +195,6 @@ function RaceOrchestrator.onTick(result)
     RaceState.topChasers  = pickTopChasers(standings, Config.Race.EVADE_CHASERS_CONSIDERED)
 
     updateLocalHUD(standings, result.runnerUp)
-    updateChaserBlipsFromStandings(standings)
 
     if not RaceState.isHost or roundEnded or result.skipped then return end
 
@@ -375,8 +346,6 @@ function RaceOrchestrator.onStandingsUpdate(data)
             RaceState.runnerUpVeh = DoesEntityExist(v or 0) and v or nil
         end
     end
-
-    updateChaserBlipsFromStandings(standings)
 
     -- Top chasers (sem IA em MP, mas mantém para LeaderBlip via spectator)
     RaceState.topChasers = {}

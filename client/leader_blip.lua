@@ -1,131 +1,73 @@
 -- ============================================================
 --  OUTRUN — Client: LeaderBlip
 --
---  Marca o veículo do LÍDER no minimap dos outros jogadores, com
---  uma ROTA GPS traçada (mesma linha do waypoint normal do GTA).
---  Acompanha automaticamente o líder porque o blip é vinculado à
---  entidade.
+--  Blip de coordenada para o líder, visível a TODOS os jogadores.
+--  Imune a culling de entidade (>400m) porque usa AddBlipForCoord.
+--  Posição atualizada via SetBlipCoords a cada CE.BLIP_UPDATE do servidor.
 --
---  Acoplamento:
---    * Módulo isolado — só recebe um `vehicle handle` em setTarget.
---    * Não sabe se é singleplayer ou multiplayer. No MP, cada cliente
---      recebe LEADER_CHANGED do server, resolve o vehicle local e
---      chama `LeaderBlip.setTarget(vehicleHandle)`.
---    * Em singleplayer (atual), o orchestrator/main.lua chamam o setTarget
---      sempre que `RaceState.leaderVeh` muda.
+--  API pública:
+--    LeaderBlip.updatePosition(x, y, z, heading)
+--    LeaderBlip.clear()
+--    LeaderBlip.hasTarget()
 -- ============================================================
 
 LeaderBlip = {}
 
-local config = {
-    -- Aparência do blip
-    sprite       = 6,    -- carro genérico (visível, distinto do default)
-    colour       = 1,      -- vermelho (objetivo/perseguição)
-    scale        = 1.0,
-    name         = "Líder",
-    -- Rota GPS (linha tracejada no minimap)
-    routeColour  = 1,      -- mesma cor do blip
-    showAsRoute  = true,
-    -- Display: 2 = minimap + mapa grande; 3 = só mapa grande; 8 = só minimap
-    displayMode  = 2,
+local CFG = {
+    sprite      = 6,
+    colour      = 1,      -- vermelho
+    scale       = 1.0,
+    name        = "Líder",
+    routeColour = 1,
+    showAsRoute = true,
+    displayMode = 2,      -- minimap + mapa grande
 }
 
-local currentBlip    = nil
-local currentVehicle = nil
+local blip = nil
 
-
--- ------------------------------------------------------------
--- Helpers internos
--- ------------------------------------------------------------
-
-local function destroyBlip()
-    if currentBlip and DoesBlipExist(currentBlip) then
-        if config.showAsRoute then
-            SetBlipRoute(currentBlip, false)
-        end
-        RemoveBlip(currentBlip)
-    end
-    currentBlip    = nil
-    currentVehicle = nil
-end
-
-local function applyBlipStyle(blip)
-    SetBlipSprite(blip, config.sprite)
-    SetBlipColour(blip, config.colour)
-    SetBlipScale(blip, config.scale)
-    SetBlipDisplay(blip, config.displayMode)
-    SetBlipAsShortRange(blip, false)
-    SetBlipCategory(blip, 2)  -- categoria genérica
-    -- Nome no minimap
+local function applyStyle(b)
+    SetBlipSprite(b, CFG.sprite)
+    SetBlipColour(b, CFG.colour)
+    SetBlipScale(b, CFG.scale)
+    SetBlipDisplay(b, CFG.displayMode)
+    SetBlipAsShortRange(b, false)
+    SetBlipCategory(b, 2)
     BeginTextCommandSetBlipName("STRING")
-    AddTextComponentSubstringPlayerName(config.name)
-    EndTextCommandSetBlipName(blip)
-
-    if config.showAsRoute then
-        SetBlipRoute(blip, true)
-        SetBlipRouteColour(blip, config.routeColour)
+    AddTextComponentSubstringPlayerName(CFG.name)
+    EndTextCommandSetBlipName(b)
+    if CFG.showAsRoute then
+        SetBlipRoute(b, true)
+        SetBlipRouteColour(b, CFG.routeColour)
     end
 end
 
-
--- ------------------------------------------------------------
--- API pública
--- ------------------------------------------------------------
-
--- Marca um veículo como líder. Se `vehicle` for nil/0/inválido, limpa o blip.
--- Se já estava marcando outro veículo, troca para o novo (remove o antigo).
-function LeaderBlip.setTarget(vehicle)
-    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then
-        destroyBlip()
-        return
+local function createAt(x, y, z)
+    local b = AddBlipForCoord(x, y, z)
+    if b == 0 or not DoesBlipExist(b) then
+        Logger.warn("blip", "AddBlipForCoord falhou para o líder")
+        return false
     end
-
-    if currentVehicle == vehicle and currentBlip and DoesBlipExist(currentBlip) then
-        return  -- idempotente: mesmo alvo, nada a fazer
-    end
-
-    destroyBlip()
-
-    local blip = AddBlipForEntity(vehicle)
-    if blip == 0 or not DoesBlipExist(blip) then
-        Logger.warn("blip", "AddBlipForEntity falhou para o líder")
-        return
-    end
-
-    applyBlipStyle(blip)
-    
-    -- [NOVO] Aplica a rotação inicial no momento em que o blip é criado
-    SetBlipRotation(blip, math.ceil(GetEntityHeading(vehicle)))
-
-    currentBlip    = blip
-    currentVehicle = vehicle
+    applyStyle(b)
+    blip = b
+    return true
 end
 
--- Remove o blip atual. Idempotente.
+function LeaderBlip.updatePosition(x, y, z, heading)
+    if not blip or not DoesBlipExist(blip) then
+        if not createAt(x, y, z) then return end
+    end
+    SetBlipCoords(blip, x, y, z)
+    SetBlipRotation(blip, math.ceil(heading))
+end
+
 function LeaderBlip.clear()
-    destroyBlip()
-end
-
--- Util para outros módulos saberem se há blip ativo.
-function LeaderBlip.hasTarget()
-    return currentBlip ~= nil and DoesBlipExist(currentBlip)
-end
-
-
--- ------------------------------------------------------------
--- Thread de Rotação em Tempo Real do Líder
--- ------------------------------------------------------------
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(50) -- Intervalo curto para a rotação ser suave
-
-        -- Verifica se o veículo e o blip do líder existem atualmente
-        if currentVehicle and DoesEntityExist(currentVehicle) and currentBlip and DoesBlipExist(currentBlip) then
-            local heading = GetEntityHeading(currentVehicle)
-            SetBlipRotation(currentBlip, math.ceil(heading))
-        else
-            -- Se não houver líder sendo rastreado, espera mais tempo para poupar processamento
-            Citizen.Wait(500)
-        end
+    if blip and DoesBlipExist(blip) then
+        if CFG.showAsRoute then SetBlipRoute(blip, false) end
+        RemoveBlip(blip)
     end
-end)
+    blip = nil
+end
+
+function LeaderBlip.hasTarget()
+    return blip ~= nil and DoesBlipExist(blip)
+end

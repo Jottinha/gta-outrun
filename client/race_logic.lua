@@ -182,6 +182,7 @@ function RaceLogic.StartSnapshotLoop()
                     x          = pos.x,
                     y          = pos.y,
                     z          = pos.z,
+                    heading    = GetEntityHeading(myVeh),
                     fx         = fwd.x,
                     fy         = fwd.y,
                     vx         = vel.x,

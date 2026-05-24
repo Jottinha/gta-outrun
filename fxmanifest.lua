@@ -32,6 +32,7 @@ client_scripts {
     'client/spectator.lua',
     'client/leader_blip.lua',
     'client/chaser_blips.lua',
+    'client/blip_sync.lua',
     'client/debug_overtake.lua',
     'client/vehicle_preview.lua',
     'client/race_orchestrator.lua',

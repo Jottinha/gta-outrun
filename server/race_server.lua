@@ -51,14 +51,15 @@ end
 
 function RaceServer.startSession(roomId, room)
     local session = {
-        overtakeState  = OvertakeCore.newState(),
-        cfg            = makeCfg(),
-        snapshots      = {},
-        eliminated     = {},
+        overtakeState   = OvertakeCore.newState(),
+        cfg             = makeCfg(),
+        snapshots       = {},
+        eliminated      = {},
         eliminatedOrder = {},
-        currentLeader  = nil,
-        roundEnded     = false,
-        generation     = 1,
+        currentLeader   = nil,
+        lastStandings   = {},
+        roundEnded      = false,
+        generation      = 1,
     }
     sessions[roomId] = session
 
@@ -143,6 +144,8 @@ function RaceServer.startSession(roomId, room)
                             })
                         end)
 
+                        s.lastStandings = standings
+
                         -- Vitória: construir resultados e encerrar rodada
                         if result.winConfirmed and not s.roundEnded then
                             s.roundEnded = true
@@ -171,6 +174,66 @@ function RaceServer.startSession(roomId, room)
         end
 
         Logger.debug("RACE_SRV", ("Sessão encerrada para sala %d"):format(roomId))
+    end)
+
+    -- ── Thread de broadcast de blips (150ms) ───────────────────────────────
+    -- Lê snapshots e lastStandings já computados pelo thread principal e
+    -- envia CE.BLIP_UPDATE para cada jogador, omitindo o próprio destinatário.
+    local blipGen = session.generation
+    Citizen.CreateThread(function()
+        while sessions[roomId] and sessions[roomId].generation == blipGen do
+            local s = sessions[roomId]
+
+            if s and not s.roundEnded and s.currentLeader then
+                local leaderSnap = s.snapshots[s.currentLeader]
+
+                Rooms.eachHuman(room, function(p)
+                    local mySrc = p.source
+
+                    -- Líder (omite se o destinatário é o próprio líder)
+                    local leaderData = false
+                    if leaderSnap and s.currentLeader ~= mySrc then
+                        leaderData = {
+                            x       = leaderSnap.x,
+                            y       = leaderSnap.y,
+                            z       = leaderSnap.z,
+                            heading = leaderSnap.heading or 0,
+                        }
+                    end
+
+                    -- Chasers em ordem de posição absoluta (slot = posição no ranking)
+                    local chasers = {}
+                    local slot    = 0
+                    for _, entry in ipairs(s.lastStandings) do
+                        if not entry.isLeader and not entry.eliminated then
+                            slot = slot + 1
+                            if slot > 3 then break end
+                            -- Não manda blip de si mesmo, mas mantém slot para
+                            -- preservar a cor correta dos outros (azul=2°, etc.)
+                            if entry.id ~= mySrc then
+                                local snap = s.snapshots[entry.id]
+                                if snap then
+                                    chasers[#chasers + 1] = {
+                                        slot    = slot,
+                                        x       = snap.x,
+                                        y       = snap.y,
+                                        z       = snap.z,
+                                        heading = snap.heading or 0,
+                                    }
+                                end
+                            end
+                        end
+                    end
+
+                    TriggerClientEvent(CE.BLIP_UPDATE, mySrc, {
+                        leader  = leaderData,
+                        chasers = chasers,
+                    })
+                end)
+            end
+
+            Citizen.Wait(150)
+        end
     end)
 
     Logger.info("RACE_SRV", ("Sessão MP iniciada para sala %d (%d players)"):format(

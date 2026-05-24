@@ -265,6 +265,7 @@ Config.Events = {
         RACE_START         = "outrun:client:RaceStart",
         STANDINGS_UPDATE   = "outrun:client:StandingsUpdate",
         HOST_PROMOTED      = "outrun:client:HostPromoted",
+        BLIP_UPDATE        = "outrun:client:BlipUpdate",
     },
 }
 

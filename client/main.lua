@@ -205,13 +205,6 @@ RegisterNetEvent(CE.LEADER_CHANGED, function(leaderId)
     if RaceState.eliminated and leaderVeh then
         Spectator.SetTarget(leaderVeh)
     end
-
-    local myId = GetPlayerServerId(PlayerId())
-    if leaderId == myId then
-        LeaderBlip.clear()
-    else
-        LeaderBlip.setTarget(leaderVeh)
-    end
 end)
 
 RegisterNetEvent(CE.CLEAR_WANTED, function()

@@ -1,19 +1,18 @@
 -- ============================================================
 --  OUTRUN — Client: ChaserBlips
 --
---  Marca os perseguidores no minimap DO LÍDER.
---  O líder vê onde estão os chasers; eles já veem o líder via LeaderBlip.
---  Cada posição tem cor diferente para fácil leitura.
+--  Blips de coordenada para os perseguidores, visíveis a TODOS
+--  os jogadores. Imune a culling (AddBlipForCoord, sem entidade).
+--  Posições atualizadas via SetBlipCoords a cada CE.BLIP_UPDATE.
 --
---  API:
---    ChaserBlips.update(chasers) — chasers = array de vehicle handles
---                                  ordenados por posição (2º primeiro)
---    ChaserBlips.clear()         — remove todos os blips
+--  API pública:
+--    ChaserBlips.updatePosition(slot, x, y, z, heading)
+--    ChaserBlips.removeSlot(slot)
+--    ChaserBlips.clear()
 -- ============================================================
 
 ChaserBlips = {}
 
--- Configuração por slot (índice = posição no ranking de chasers, a partir do 2º)
 local SLOT_CONFIG = {
     { colour = 3,  name = "2\xC2\xBA" },  -- azul
     { colour = 5,  name = "3\xC2\xBA" },  -- amarelo
@@ -21,77 +20,43 @@ local SLOT_CONFIG = {
 }
 
 local MAX_CHASERS = #SLOT_CONFIG
-local blips = {}
+local slots = {}  -- slots[i] = blip handle ou nil
 
-
--- ------------------------------------------------------------
--- Helpers internos
--- ------------------------------------------------------------
-
-local function destroyAll()
-    for _, b in ipairs(blips) do
-        -- Adicionado o ".id" para pegar apenas o número do blip salvo na tabela
-        if DoesBlipExist(b.id) then RemoveBlip(b.id) end
-    end
-    blips = {}
-end
-
-local function makeBlip(vehicle, slot)
-    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return nil end
-    local cfg  = SLOT_CONFIG[slot]
-    local blip = AddBlipForEntity(vehicle)
-    if blip == 0 or not DoesBlipExist(blip) then return nil end
-
-    SetBlipSprite(blip, 6)
-    SetBlipColour(blip, cfg.colour)
-    SetBlipScale(blip, 0.85)
-    SetBlipDisplay(blip, 2)
-    SetBlipAsShortRange(blip, false)
-    SetBlipCategory(blip, 2)
+local function createAt(slot, x, y, z)
+    local cfg = SLOT_CONFIG[slot]
+    local b = AddBlipForCoord(x, y, z)
+    if b == 0 or not DoesBlipExist(b) then return nil end
+    SetBlipSprite(b, 6)
+    SetBlipColour(b, cfg.colour)
+    SetBlipScale(b, 0.85)
+    SetBlipDisplay(b, 2)
+    SetBlipAsShortRange(b, false)
+    SetBlipCategory(b, 2)
     BeginTextCommandSetBlipName("STRING")
     AddTextComponentSubstringPlayerName(cfg.name)
-    EndTextCommandSetBlipName(blip)
-
-    SetBlipRotation(blip, math.ceil(GetEntityHeading(vehicle)))
-    return blip
+    EndTextCommandSetBlipName(b)
+    return b
 end
 
-
--- ------------------------------------------------------------
--- API pública
--- ------------------------------------------------------------
-
-function ChaserBlips.update(chasers)
-    destroyAll()
-    for i = 1, math.min(#chasers, MAX_CHASERS) do
-        local veh = chasers[i]
-        local blip = makeBlip(veh, i)
-        if blip then 
-            -- Salva tanto o ID do blip quanto a entidade do veículo
-            blips[#blips + 1] = { id = blip, vehicle = veh } 
-        end
+function ChaserBlips.updatePosition(slot, x, y, z, heading)
+    if slot < 1 or slot > MAX_CHASERS then return end
+    if not slots[slot] or not DoesBlipExist(slots[slot]) then
+        slots[slot] = createAt(slot, x, y, z)
+        if not slots[slot] then return end
     end
+    SetBlipCoords(slots[slot], x, y, z)
+    SetBlipRotation(slots[slot], math.ceil(heading))
+end
+
+function ChaserBlips.removeSlot(slot)
+    if slots[slot] and DoesBlipExist(slots[slot]) then
+        RemoveBlip(slots[slot])
+    end
+    slots[slot] = nil
 end
 
 function ChaserBlips.clear()
-    destroyAll()
-end
-
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(50) -- Intervalo curto para a rotação ser suave no minimapa
-
-        if #blips > 0 then
-            for _, b in ipairs(blips) do
-                -- Garante que o carro e o blip ainda existem antes de atualizar
-                if DoesEntityExist(b.vehicle) and DoesBlipExist(b.id) then
-                    local heading = GetEntityHeading(b.vehicle)
-                    SetBlipRotation(b.id, math.ceil(heading))
-                end
-            end
-        else
-            -- Se a lista estiver vazia, estende o Wait para poupar processamento
-            Citizen.Wait(500)
-        end
+    for i = 1, MAX_CHASERS do
+        ChaserBlips.removeSlot(i)
     end
-end)
+end
