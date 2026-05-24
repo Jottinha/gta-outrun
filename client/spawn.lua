@@ -8,7 +8,6 @@
 
 Spawn = {}
 
-
 -- Carrega um modelo com timeout. Necessário porque CreateVehicle
 -- e CreatePed* retornam 0 silenciosamente quando o modelo não
 -- está em memória.
@@ -132,6 +131,15 @@ local function createVehicleAt(model, x, y, z, heading)
     return veh
 end
 
+local function applyGarageMods(veh, mods)
+    if not veh or not DoesEntityExist(veh) then return end
+    if not mods or type(mods) ~= 'table' or not next(mods) then return end
+    local ok, QBCore = pcall(exports['qb-core'].GetCoreObject, exports['qb-core'])
+    if ok and QBCore then
+        QBCore.Functions.SetVehicleProperties(veh, mods)
+    end
+end
+
 
 local function createNPC(vehicle, participantIndex, participantId)
     local pedModel = pickPedModelName(participantIndex)
@@ -198,6 +206,8 @@ function Spawn.runMyVehicle(payload)
     local veh = createVehicleAt(payload.model or Config.Vehicles.DEFAULT,
         spawnX, spawnY, spawnZ, nodeHead)
 
+    applyGarageMods(veh, payload.mods)
+
     -- Registrar como entidade de rede para que outros players vejam o veículo
     SetEntityAsMissionEntity(veh, true, true)
     NetworkRegisterEntityAsNetworked(veh)
@@ -248,6 +258,8 @@ function Spawn.run(payload)
 
         local veh = createVehicleAt(p.model or Config.Vehicles.DEFAULT,
             spawnX, spawnY, spawnZ, nodeHead)
+
+        applyGarageMods(veh, p.mods)
 
         if p.isNPC then
             local ped = createNPC(veh, index, p.source)

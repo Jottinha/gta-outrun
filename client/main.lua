@@ -45,7 +45,7 @@ function Lobby.addNPC(data)
 end
 
 function Lobby.setMyCar(data)
-    TriggerServerEvent(SE.SET_CAR, data.model or Config.Vehicles.DEFAULT)
+    TriggerServerEvent(SE.SET_CAR, data.model or Config.Vehicles.DEFAULT, data.plate or nil)
 end
 
 function Lobby.toggleReady()
@@ -88,13 +88,22 @@ function Lobby.joinRoom(data)
     TriggerServerEvent(SE.JOIN_ROOM, tonumber(data.roomId))
 end
 
+local garageVehiclesCache = {}
+
 -- Vehicle preview 3D
 function Lobby.previewVehicle(data)
     local model = data.model or Config.Vehicles.DEFAULT
+    local plate = data.plate
+    local mods = nil
+    if plate and garageVehiclesCache then
+        for _, gv in ipairs(garageVehiclesCache) do
+            if gv.plate == plate then mods = gv.mods; break end
+        end
+    end
     if VehiclePreview.isActive() then
-        VehiclePreview.switchModel(model)
+        VehiclePreview.switchModel(model, mods)
     else
-        VehiclePreview.show(model)
+        VehiclePreview.show(model, mods)
     end
 end
 
@@ -109,21 +118,41 @@ end
 
 local function buildVehicleConfig()
     local vehicles = {}
-    for _, model in ipairs(Config.Vehicles.SELECTABLE) do
-        local display = Config.VehicleDisplay[model]
-        vehicles[#vehicles + 1] = {
-            model = model,
-            label = display and display.label or model,
-        }
+    if #garageVehiclesCache > 0 then
+        -- Jogador tem garagem: mostra só os carros salvos
+        for _, gv in ipairs(garageVehiclesCache) do
+            vehicles[#vehicles + 1] = {
+                model = gv.model,
+                label = gv.label or gv.model,
+                plate = gv.plate,
+            }
+        end
+    else
+        -- Sem garagem: fallback para lista fixa
+        for _, model in ipairs(Config.Vehicles.SELECTABLE) do
+            local display = Config.VehicleDisplay[model]
+            vehicles[#vehicles + 1] = {
+                model = model,
+                label = display and display.label or model,
+            }
+        end
     end
     return {
         vehicles     = vehicles,
-        defaultModel = Config.Vehicles.DEFAULT,
+        defaultModel = vehicles[1] and vehicles[1].model or Config.Vehicles.DEFAULT,
         botsEnabled  = Config.Features.BotsEnabled,
     }
 end
 
+RegisterNetEvent('outrun:client:garageVehicles', function(vehicles)
+    garageVehiclesCache = vehicles or {}
+    if hasActiveLobby then
+        Nui.send('updateVehicleConfig', { vehicleConfig = buildVehicleConfig() })
+    end
+end)
+
 RegisterCommand('outrun', function()
+    TriggerServerEvent('outrun:server:getGarageVehicles')
     Nui.setFocus(true)
     if hasActiveLobby then
         TriggerServerEvent(SE.REQUEST_LOBBY_STATE)

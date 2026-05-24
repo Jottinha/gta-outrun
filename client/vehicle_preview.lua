@@ -125,7 +125,16 @@ local function startRotationThread()
 end
 
 
-function VehiclePreview.show(model)
+local function applyMods(veh, mods)
+    if not veh or not DoesEntityExist(veh) then return end
+    if not mods or type(mods) ~= 'table' or not next(mods) then return end
+    local ok, QBCore = pcall(exports['qb-core'].GetCoreObject, exports['qb-core'])
+    if ok and QBCore then
+        QBCore.Functions.SetVehicleProperties(veh, mods)
+    end
+end
+
+function VehiclePreview.show(model, mods)
     destroyPreviewVehicle()
 
     local ped = PlayerPedId()
@@ -133,19 +142,21 @@ function VehiclePreview.show(model)
     SetEntityVisible(ped, false, false)
 
     spawnPreviewVehicle(model)
+    applyMods(previewVeh, mods)
     setupCamera()
     startRotationThread()
 end
 
 
-function VehiclePreview.switchModel(model)
+function VehiclePreview.switchModel(model, mods)
     if not previewCam then
-        VehiclePreview.show(model)
+        VehiclePreview.show(model, mods)
         return
     end
 
     destroyPreviewVehicle()
     spawnPreviewVehicle(model)
+    applyMods(previewVeh, mods)
     startRotationThread()
 end
 

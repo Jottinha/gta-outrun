@@ -12,8 +12,18 @@
 RoundManager = {}
 
 local Events = Config.Events
+local QBCore = exports['qb-core']:GetCoreObject()
 
 math.randomseed(os.time())
+
+local function fetchGarageMods(src, plate)
+    if not plate or GetResourceState('outrun-garage') ~= 'started' then return nil end
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return nil end
+    local ok, mods = pcall(exports['outrun-garage'].GetVehicleMods,
+        exports['outrun-garage'], Player.PlayerData.citizenid, plate)
+    return ok and mods or nil
+end
 
 
 -- ===== Internos =====
@@ -113,6 +123,7 @@ function RoundManager.start(roomId, room)
                     roomId     = roomId,
                     spawnBase  = spawnPoint,
                     model      = p.model,
+                    mods       = fetchGarageMods(p.source, p.plate),
                     gridIndex  = humanIdx,
                     totalCount = humanCount,
                     bonusRound = bonus,
@@ -125,10 +136,19 @@ function RoundManager.start(roomId, room)
         Logger.info("SRV", ("Sala %d iniciando rodada %d (MP, %d players)"):format(
             roomId, room.roundNum, humanCount))
     else
-        -- Solo: host spawna tudo localmente (comportamento original)
+        -- Solo: host spawna tudo localmente
+        -- Injetar mods da garagem nos participants humanos
+        local partsWithMods = {}
+        for _, p in ipairs(room.participants) do
+            local copy = { source = p.source, isNPC = p.isNPC, model = p.model, personality = p.personality }
+            if not p.isNPC and p.plate then
+                copy.mods = fetchGarageMods(p.source, p.plate)
+            end
+            partsWithMods[#partsWithMods + 1] = copy
+        end
         TriggerClientEvent(Events.Client.SPAWN_VEHICLES, room.host, {
             roomId       = roomId,
-            participants = room.participants,
+            participants = partsWithMods,
             spawnBase    = spawnPoint,
             bonusRound   = bonus,
             scores       = room.scores,

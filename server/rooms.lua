@@ -108,10 +108,11 @@ function Rooms.addNPC(room, model, personality)
     return npcId
 end
 
-function Rooms.setParticipantCar(room, src, model)
+function Rooms.setParticipantCar(room, src, model, plate)
     for _, p in ipairs(room.participants) do
         if p.source == src then
             p.model = model or Config.Vehicles.DEFAULT
+            p.plate = plate
             return true
         end
     end

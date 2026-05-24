@@ -80,9 +80,9 @@ function updateVehicleDisplay() {
     if (sel) sel.value = v.model;
 }
 
-function requestPreview(model) {
+function requestPreview(vehicle) {
     State.previewActive = true;
-    postNUI('previewVehicle', { model: model });
+    postNUI('previewVehicle', { model: vehicle.model, plate: vehicle.plate || null });
 }
 
 function destroyPreview() {
@@ -97,8 +97,8 @@ function navigateVehicle(direction) {
     State.vehicleIndex = (State.vehicleIndex + direction + State.vehicles.length) % State.vehicles.length;
     updateVehicleDisplay();
     const v = getCurrentVehicle();
-    postNUI('setMyCar', { model: v.model });
-    requestPreview(v.model);
+    postNUI('setMyCar', { model: v.model, plate: v.plate || null });
+    requestPreview(v);
 }
 
 function setVehicleByModel(model) {
@@ -130,7 +130,7 @@ function setupVehicleSelector() {
 
 function initPreviewOnLobbyOpen() {
     const v = getCurrentVehicle();
-    requestPreview(v.model);
+    requestPreview(v);
 }
 
 
@@ -469,6 +469,9 @@ window.addEventListener('message', ({ data: { action, data } }) => {
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
             initPreviewOnLobbyOpen();
+            // Sincronizar seleção inicial com o server
+            const cv = getCurrentVehicle();
+            postNUI('setMyCar', { model: cv.model, plate: cv.plate || null });
             break;
         }
         case 'lobbyUpdated': {
@@ -479,6 +482,14 @@ window.addEventListener('message', ({ data: { action, data } }) => {
             renderParticipants(data.room.participants || [], isHost);
             break;
         }
+        case 'updateVehicleConfig':
+            if (data.vehicleConfig) {
+                applyVehicleConfig(data.vehicleConfig);
+                const uv = getCurrentVehicle();
+                postNUI('setMyCar', { model: uv.model, plate: uv.plate || null });
+                requestPreview(uv);
+            }
+            break;
         case 'roomsList': renderRoomsList(data.rooms || []); break;
 
         case 'showCountdown': showCountdown(data); break;

@@ -105,14 +105,31 @@ RegisterNetEvent(SE.ADD_NPC, function(model, personality)
     TriggerClientEvent(CE.LOBBY_UPDATED, src, Rooms.toLobbyPayload(room))
 end)
 
-RegisterNetEvent(SE.SET_CAR, function(model)
+RegisterNetEvent(SE.SET_CAR, function(model, plate)
     local src = source
     local _, room = Rooms.getByParticipant(src)
     if not room or room.state ~= Config.States.Room.LOBBY then return end
 
-    if Rooms.setParticipantCar(room, src, model) then
+    if Rooms.setParticipantCar(room, src, model, plate) then
         broadcastLobby(room)
     end
+end)
+
+RegisterNetEvent('outrun:server:getGarageVehicles', function()
+    local src = source
+    if GetResourceState('outrun-garage') ~= 'started' then
+        TriggerClientEvent('outrun:client:garageVehicles', src, {})
+        return
+    end
+    local QBCore = exports['qb-core']:GetCoreObject()
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then
+        TriggerClientEvent('outrun:client:garageVehicles', src, {})
+        return
+    end
+    local ok, vehicles = pcall(exports['outrun-garage'].GetPlayerVehicles,
+        exports['outrun-garage'], Player.PlayerData.citizenid)
+    TriggerClientEvent('outrun:client:garageVehicles', src, ok and vehicles or {})
 end)
 
 RegisterNetEvent(SE.TOGGLE_READY, function()
