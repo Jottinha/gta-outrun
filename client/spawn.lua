@@ -61,48 +61,17 @@ local function getGroundZ(x, y, z)
 end
 
 
+-- Spawn 100% explícito: usa a posição e o heading capturados no ponto
+-- (vector4) e ajusta apenas o Z ao chão. Não consulta vehicle nodes — a
+-- escolha do local (rua larga/reta/plana) é responsabilidade do ponto
+-- configurado em Config.SpawnNodes.
 local function resolveSpawnNode(base)
-    local bestPos, bestHead, bestDist
-    local maxDist = Config.Race.SPAWN_NODE_MAX_DISTANCE or 30.0
-
-    for _, nodeType in ipairs({1, 0}) do
-        local found, nodePos, nodeHead = GetClosestVehicleNodeWithHeading(
-            base.x, base.y, base.z, nodeType, 3, 0)
-
-        if found and type(nodePos) == "vector3" and type(nodeHead) == "number" then
-            local dist = #(vector3(base.x, base.y, 0.0) - vector3(nodePos.x, nodePos.y, 0.0))
-            if not bestDist or dist < bestDist then
-                bestPos  = nodePos
-                bestHead = nodeHead
-                bestDist = dist
-            end
-        end
-    end
-
-    if bestPos and bestDist <= maxDist then
-        local groundZ = getGroundZ(bestPos.x, bestPos.y, bestPos.z)
-        local finalPos = vector3(bestPos.x, bestPos.y, groundZ)
-        Logger.debug("SPAWN", ("spawn node @ %s heading=%.1f dist=%.1fm groundZ=%.1f (OK)"):format(
-            tostring(finalPos), bestHead, bestDist, groundZ))
-        return finalPos, bestHead
-    end
-
-    local fallbackHead = 0.0
-    if bestPos then
-        local dx = bestPos.x - base.x
-        local dy = bestPos.y - base.y
-        if math.abs(dx) > 0.1 or math.abs(dy) > 0.1 then
-            fallbackHead = math.deg(math.atan(dx, dy))
-            if fallbackHead < 0 then fallbackHead = fallbackHead + 360.0 end
-        end
-        Logger.warn("SPAWN", ("node mais proximo ficou a %.1fm (max %.0fm) — usando coordenada original"):format(
-            bestDist, maxDist))
-    else
-        Logger.warn("SPAWN", "nenhum vehicle node encontrado — usando coordenada original")
-    end
-
+    local heading = base.w or 0.0
     local groundZ = getGroundZ(base.x, base.y, base.z)
-    return vector3(base.x, base.y, groundZ), fallbackHead
+    local pos = vector3(base.x, base.y, groundZ)
+    Logger.debug("SPAWN", ("spawn explícito @ %s heading=%.1f groundZ=%.1f"):format(
+        tostring(pos), heading, groundZ))
+    return pos, heading
 end
 
 

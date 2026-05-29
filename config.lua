@@ -337,9 +337,16 @@ Config.PedModels = {
 -- 11) Config.SpawnNodes — Pontos curados para largada
 -- ============================================================
 
+-- vector4(x, y, z, heading). O heading = direção em que os carros vão acelerar
+-- (o grid se monta PARA TRÁS a partir do ponto). Capture os pontos in-game com
+-- /spawnpoint, em ruas largas/retas/planas (o grid de 8 carros ocupa ~28m de
+-- comprimento × ~5m de largura atrás do ponto).
 Config.SpawnNodes = {
-    vector3(319.51, -1893.95, 17.17),
-    vector3(-2257.58, 3334.15, 32.42),
-    vector3(-876.01, 2616.49, 56.94),
-    vector3(-1729.55, -2884.01, 13.94),
+    vector4(-364.12, -1663.80, 18.16, 327.1), -- heading enviado como "3271" (inválido); assumido 327.1 — confirmar
+    vector4(628.34, -2048.83, 28.81, 85.0),
+    vector4(-52.06, -2618.07, 5.47, 276.6),
+    vector4(110.87, -2867.01, 5.47, 356.0),
+    vector4(1434.08, -1056.79, 53.97, 117.8),
+    vector4(74.77, -2038.09, 18.05, 90.0),
+    vector4(74.38, 6430.06, 30.57, 41.1),
 }

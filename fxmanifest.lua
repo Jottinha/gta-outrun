@@ -37,6 +37,7 @@ client_scripts {
     'client/vehicle_preview.lua',
     'client/race_orchestrator.lua',
     'client/main.lua',
+    'client/dev_spawnpoint.lua', -- TEMP: captura de pontos de largada (remover depois)
 }
 
 ui_page 'html/index.html'
