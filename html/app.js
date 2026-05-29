@@ -24,6 +24,13 @@ function hideAllMenus() {
     destroyPreview();
 }
 
+// Limpeza total da UI (reset do mod): menus + HUD + overlays de corrida
+function resetAllUI() {
+    hideAllMenus();
+    ['hud', 'round-result', 'countdown', 'end-screen', 'leader-takeover', 'leader-lose']
+        .forEach(hide);
+}
+
 function postNUI(action, data = {}) {
     fetch(`https://outrun/${action}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -245,7 +252,42 @@ function setupLobby() {
         postNUI('closeMenu');
     });
 
+    // Resetar corrida: exige um segundo clique de confirmação dentro de 3s
+    $('btn-reset').addEventListener('click', () => {
+        const btn = $('btn-reset');
+        if (btn.dataset.confirm === '1') {
+            clearTimeout(resetConfirmTimer);
+            resetResetButtonLabel();
+            postNUI('resetRace');
+        } else {
+            btn.dataset.confirm = '1';
+            btn.textContent = 'CONFIRMAR RESET?';
+            btn.classList.add('confirm');
+            resetConfirmTimer = setTimeout(resetResetButtonLabel, 3000);
+        }
+    });
+
     setupVehicleSelector();
+}
+
+let resetConfirmTimer = null;
+
+function resetResetButtonLabel() {
+    const btn = $('btn-reset');
+    if (!btn) return;
+    btn.dataset.confirm = '';
+    btn.textContent = 'RESETAR CORRIDA';
+    btn.classList.remove('confirm');
+}
+
+// Mostra o botão de reset apenas com a corrida em andamento (estado != LOBBY)
+function updateResetButton(roomState) {
+    const btn = $('btn-reset');
+    if (!btn) return;
+    const racing = !!roomState && roomState !== 'LOBBY';
+    btn.classList.toggle('hidden', !racing);
+    if (resetConfirmTimer) clearTimeout(resetConfirmTimer);
+    resetResetButtonLabel();
 }
 
 function getVehicleLabel(model) {
@@ -456,6 +498,7 @@ window.addEventListener('message', ({ data: { action, data } }) => {
         case 'openMenu':  showScreen('main-menu'); break;
         case 'showLobby': showScreen('lobby');     break;
         case 'hideMenus': hideAllMenus();          break;
+        case 'resetUI':   resetAllUI();            break;
 
         case 'openLobby': showScreen('lobby'); break;
         case 'hideLobby': hideAllMenus();      break;
@@ -468,6 +511,7 @@ window.addEventListener('message', ({ data: { action, data } }) => {
             showScreen('lobby');
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
+            updateResetButton(data.room.state);
             initPreviewOnLobbyOpen();
             // Sincronizar seleção inicial com o server
             const cv = getCurrentVehicle();
@@ -480,6 +524,7 @@ window.addEventListener('message', ({ data: { action, data } }) => {
             if (data.vehicleConfig) applyVehicleConfig(data.vehicleConfig);
             setHostUI(isHost);
             renderParticipants(data.room.participants || [], isHost);
+            updateResetButton(data.room.state);
             break;
         }
         case 'updateVehicleConfig':

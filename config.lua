@@ -239,6 +239,7 @@ Config.Events = {
         PLAYER_ELIMINATED   = "outrun:server:PlayerEliminated",
         LEAVE_LOBBY         = "outrun:server:LeaveLobby",
         REQUEST_ROOMS_LIST  = "outrun:server:RequestRoomsList",
+        RESET_RACE          = "outrun:server:ResetRace",
         -- Multiplayer
         JOIN_ROOM           = "outrun:server:JoinRoom",
         SPAWN_READY         = "outrun:server:SpawnReady",
@@ -250,6 +251,7 @@ Config.Events = {
         LOBBY_UPDATED      = "outrun:client:LobbyUpdated",
         NO_ACTIVE_LOBBY    = "outrun:client:NoActiveLobby",
         FORCE_LOBBY_CLOSE  = "outrun:client:ForceLobbyClose",
+        RACE_RESET         = "outrun:client:RaceReset",
         NOTIFY             = "outrun:client:Notify",
         SPAWN_VEHICLES     = "outrun:client:SpawnVehicles",
         BE_SPECTATOR       = "outrun:client:BeSpectator",
@@ -300,6 +302,8 @@ Config.VehicleDisplay = {
 
 Config.Features = {
     BotsEnabled = false,
+    -- Impede o jogador de sair do veículo durante a corrida
+    LockVehicleDuringRace = true,
 }
 
 

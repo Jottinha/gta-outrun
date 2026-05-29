@@ -438,3 +438,15 @@ function RaceOrchestrator.endSession()
         RaceOrchestrator.cleanupVehicles()
     end)
 end
+
+
+-- Ao parar o resource (ex.: restart manual), garante que não fiquem veículos
+-- órfãos no mapa nem o player invencível/congelado/invisível.
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+    local ped = PlayerPedId()
+    SetEntityInvincible(ped, false)
+    FreezeEntityPosition(ped, false)
+    SetEntityVisible(ped, true, false)
+    RaceOrchestrator.cleanupVehicles()
+end)

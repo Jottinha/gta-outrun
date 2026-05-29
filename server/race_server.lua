@@ -262,3 +262,13 @@ end
 function RaceServer.hasSession(roomId)
     return sessions[roomId] ~= nil
 end
+
+
+-- Encerra TODAS as sessões (usado no reset global do mod). Bumpar a generation
+-- faz as threads de cada sessão saírem no próximo tick.
+function RaceServer.endAll()
+    for _, s in pairs(sessions) do
+        s.generation = s.generation + 1
+    end
+    sessions = {}
+end

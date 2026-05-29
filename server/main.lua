@@ -166,6 +166,17 @@ RegisterNetEvent(SE.REQUEST_ROOMS_LIST, function()
     TriggerClientEvent(CE.ROOMS_LIST, src, Rooms.list())
 end)
 
+-- Resetar mod: reset GLOBAL gracioso (sem reiniciar o resource — auto-ensure
+-- durante corrida ativa causa SIGSEGV no servidor). Encerra todas as sessões
+-- de corrida, apaga todas as salas e devolve TODOS os clients ao estado limpo.
+-- Qualquer um pode acionar; serve para recuperação de erro.
+RegisterNetEvent(SE.RESET_RACE, function()
+    Logger.info("SRV", ("Reset global do outrun acionado pelo jogador %d"):format(source))
+    RaceServer.endAll()
+    Rooms.reset()
+    TriggerClientEvent(CE.RACE_RESET, -1)
+end)
+
 
 -- ===== Corrida =====
 

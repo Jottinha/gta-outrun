@@ -41,6 +41,7 @@ function Nui.registerCallbacks()
     nuiCallback('refreshRooms',  function()     Lobby.refreshRooms()       end)
     nuiCallback('joinRoom',      function(data) Lobby.joinRoom(data)       end)
     nuiCallback('leaveLobby',    function()     Lobby.leave()              end)
+    nuiCallback('resetRace',     function()     Lobby.resetRace()          end)
     nuiCallback('closeMenu',     function()     Lobby.closeMenu()          end)
 
     -- Lobby (configuração de corrida)

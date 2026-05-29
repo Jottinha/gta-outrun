@@ -91,6 +91,12 @@ function Rooms.delete(roomId)
     rooms[roomId] = nil
 end
 
+-- Apaga todas as salas (reset global do mod).
+function Rooms.reset()
+    rooms = {}
+    nextRoomId = 1
+end
+
 function Rooms.setState(room, newState)
     room.state = newState
 end

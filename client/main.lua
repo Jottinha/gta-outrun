@@ -83,6 +83,11 @@ function Lobby.refreshRooms()
     TriggerServerEvent(SE.REQUEST_ROOMS_LIST)
 end
 
+-- Resetar corrida (recuperação de erro): pede ao servidor para derrubar a sala
+function Lobby.resetRace()
+    TriggerServerEvent(SE.RESET_RACE)
+end
+
 -- Entrar em sala alheia (multiplayer real)
 function Lobby.joinRoom(data)
     TriggerServerEvent(SE.JOIN_ROOM, tonumber(data.roomId))
@@ -178,6 +183,23 @@ Citizen.CreateThread(function()
             SetScenarioPedDensityMultiplierThisFrame(0.0, 0.0)
         end
         Citizen.Wait(0)
+    end
+end)
+
+
+-- ============================================================
+-- Thread: trava o jogador dentro do carro durante a corrida
+-- ============================================================
+
+Citizen.CreateThread(function()
+    while true do
+        if Config.Features.LockVehicleDuringRace and RaceState.active then
+            DisableControlAction(0, 75, true) -- INPUT_VEH_EXIT
+            DisableControlAction(2, 75, true)
+            Citizen.Wait(0)
+        else
+            Citizen.Wait(250)
+        end
     end
 end)
 
@@ -292,6 +314,22 @@ RegisterNetEvent(CE.FORCE_LOBBY_CLOSE, function()
     Nui.setFocus(false)
     Nui.send('hideMenus', {})
     notify("A sala foi encerrada.")
+end)
+
+-- Reset global do mod (broadcast para todos). Encerra qualquer corrida em
+-- andamento e devolve o player ao estado limpo, livre para criar nova sala.
+RegisterNetEvent(CE.RACE_RESET, function()
+    local wasInvolved = hasActiveLobby or RaceState.active
+    VehiclePreview.destroy()
+    RaceOrchestrator.endSession()
+    RaceState.reset()
+    LeaderBlip.clear()
+    ChaserBlips.clear()
+    hasActiveLobby = false
+    trafficEnabled = true
+    Nui.setFocus(false)
+    Nui.send('resetUI', {})
+    if wasInvolved then notify("Outrun resetado. Você pode criar uma nova sala.") end
 end)
 
 -- Solo: host recebe lista completa de participants para spawnar tudo
