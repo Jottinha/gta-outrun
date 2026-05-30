@@ -19,6 +19,7 @@ server_scripts {
     'server/round_manager.lua',
     'server/disconnect.lua',
     'server/main.lua',
+    'server/amphibious.lua', -- feature isolada: swap netId carro<->jetski
 }
 
 client_scripts {
@@ -37,6 +38,7 @@ client_scripts {
     'client/vehicle_preview.lua',
     'client/race_orchestrator.lua',
     'client/main.lua',
+    'client/amphibious.lua', -- feature isolada: swap carro<->jetski na água (MP)
     'client/dev_spawnpoint.lua', -- TEMP: captura de pontos de largada (remover depois)
 }
 

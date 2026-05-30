@@ -244,6 +244,8 @@ Config.Events = {
         JOIN_ROOM           = "outrun:server:JoinRoom",
         SPAWN_READY         = "outrun:server:SpawnReady",
         POSITION_SNAPSHOT   = "outrun:server:PositionSnapshot",
+        -- Anfíbio: player avisa que trocou de veículo (carro <-> jetski)
+        UPDATE_VEHICLE_NETID = "outrun:server:UpdateVehicleNetId",
     },
 
     Client = {
@@ -268,6 +270,8 @@ Config.Events = {
         STANDINGS_UPDATE   = "outrun:client:StandingsUpdate",
         HOST_PROMOTED      = "outrun:client:HostPromoted",
         BLIP_UPDATE        = "outrun:client:BlipUpdate",
+        -- Anfíbio: broadcast do novo netId de um participante para a sala
+        VEHICLE_NETID_CHANGED = "outrun:client:VehicleNetIdChanged",
     },
 }
 
@@ -305,6 +309,34 @@ Config.Features = {
     BotsEnabled = false,
     -- Impede o jogador de sair do veículo durante a corrida
     LockVehicleDuringRace = true,
+}
+
+
+-- ============================================================
+-- 9d) Config.Amphibious — Swap carro <-> jetski na água (MP)
+--
+-- Feature ISOLADA (client/amphibious.lua + server/amphibious.lua).
+-- Quando o carro do jogador entra na água durante a corrida, ele vira
+-- jetski; ao voltar pra terra, vira carro de novo. Foco multiplayer.
+-- ============================================================
+
+Config.Amphibious = {
+    ENABLED          = true,        -- liga/desliga a feature inteira
+    ONLY_MULTIPLAYER = true,        -- só age em corrida multiplayer
+    JETSKI_MODEL     = "seashark",  -- modelo aquático usado na troca
+
+    -- Submersão (0..1) do carro para virar jetski. Baixo = troca cedo,
+    -- antes do motor "morrer"/afundar.
+    ENTER_SUBMERGE   = 0.18,
+    -- Abaixo deste nível E fora d'água, começa o debounce para virar carro.
+    EXIT_SUBMERGE    = 0.05,
+    -- Tempo (ms) fora d'água antes de voltar a ser carro (anti ping-pong).
+    LAND_DEBOUNCE_MS = 900,
+
+    -- Intervalo do loop de detecção (ms): responsivo perto/na água,
+    -- econômico em terra seca.
+    CHECK_INTERVAL_WET = 120,
+    CHECK_INTERVAL_DRY = 400,
 }
 
 
