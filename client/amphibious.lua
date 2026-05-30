@@ -86,8 +86,13 @@ local function createNetworkedVehicle(hash, coords, heading)
     return veh
 end
 
-local function warpIntoVehicle(veh)
-    TaskWarpPedIntoVehicle(PlayerPedId(), veh, -1)
+-- Senta o jogador no banco do motorista INSTANTANEAMENTE. SetPedIntoVehicle
+-- é síncrono (ao contrário de TaskWarpPedIntoVehicle, que é uma task e pode
+-- não concluir antes de deletarmos o veículo antigo). Retorna se sentou.
+local function putMeInVehicle(veh)
+    local ped = PlayerPedId()
+    SetPedIntoVehicle(ped, veh, -1)
+    return GetPedInVehicleSeat(veh, -1) == ped
 end
 
 -- Mantém a velocidade horizontal; zera a vertical para o veículo novo não
@@ -127,9 +132,9 @@ local function swapToJetski(car)
         heading)
     if not jet then return end
 
-    warpIntoVehicle(jet)       -- entra no jetski ANTES de deletar o carro
-    carryMomentum(jet, vel)
+    local seated = putMeInVehicle(jet)         -- senta ANTES de deletar o carro
     if DoesEntityExist(car) then DeleteVehicle(car) end
+    if seated then carryMomentum(jet, vel) end -- só dá momentum se eu entrei
 
     RaceState.myVehicle = jet
     ownedVehicle = jet
@@ -153,9 +158,9 @@ local function swapToCar(jet)
     SetVehicleOnGroundProperly(car)
     setVehicleProps(car, savedProps) -- restaura mods/placa/cor originais
 
-    warpIntoVehicle(car)
-    carryMomentum(car, vel)
+    local seated = putMeInVehicle(car)         -- senta ANTES de deletar o jetski
     if DoesEntityExist(jet) then DeleteVehicle(jet) end
+    if seated then carryMomentum(car, vel) end
 
     RaceState.myVehicle = car
     ownedVehicle = car
