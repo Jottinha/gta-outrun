@@ -280,7 +280,7 @@ Config.Vehicles = {
     DEFAULT = "sultan",
     SELECTABLE = {
         "sultan", "elegy2", "adder", "t20", "zentorno",
-        "kuruma", "comet2", "banshee",
+        "kuruma", "comet2", "banshee", "skyline",
     },
 }
 
@@ -293,6 +293,7 @@ Config.VehicleDisplay = {
     kuruma   = { label = "Kuruma" },
     comet2   = { label = "Comet" },
     banshee  = { label = "Banshee" },
+    skyline  = { label = "Skyline GT-R R34" }, -- add-on (resource [cars]/skyline_gtr_bnr34)
 }
 
 
